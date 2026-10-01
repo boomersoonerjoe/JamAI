@@ -41,7 +41,7 @@ Goal: after each meaningful checkpoint, the repository itself should contain eno
 - Last Updated: 2026-10-01
 - Canonical Hand-Off Location: `PROGRESS.md` on the default branch (`main`)
 - Active Development Branch: `codex/cross-platform-foundation`
-- Status: LOCAL WEBLLM CHAT IMPLEMENTED AND MAC BROWSER SMOKE TEST PASSED; PHYSICAL IPHONE ACCEPTANCE PENDING; APPLE V1 PRESERVED AT `395d298`
+- Status: OLLAMA MAC ADAPTER IMPLEMENTED; QWEN3.5 4B WEIGHTS DOWNLOADING; LIVE INFERENCE PENDING; APPLE V1 PRESERVED AT `395d298`
 - Active Milestone: Version 1 - Cross-platform Chat
 
 The actual Git branch HEAD is the authoritative latest commit. Do not hard-code a commit hash here as the permanent source of truth because updating this file creates another commit.
@@ -172,6 +172,17 @@ If the session ends before these steps can be completed, the Abrupt-Stop / Usage
 > Continue build. Read `PROGRESS.md` from `main` first, inspect the newest commits and active development PR/branch, then continue the recorded PocketAI V1 task from the actual repository state. Preserve the documented architecture and scope. Do not restart completed work, work directly on `main` for unfinished features, make spending decisions, or report builds/tests/device behavior as verified unless they were actually run. If the prior session appears to have ended abruptly, reconstruct the latest safe checkpoint from GitHub before continuing.
 
 ## Session Log
+### 2026-10-01 - Codex Mac Ollama integration checkpoint
+- Confirmed current branch and clean initial checkout; inspected portable `ChatProvider`, React UI, persistence/context, browser WebLLM provider and preserved Swift/MLX architecture before editing.
+- Confirmed hardware: M5 MacBook Air, 16 GB RAM. Selected Ollama 0.35.0 with `qwen3.5:4b-q4_K_M` (about 3.4 GB weights), thinking disabled, context 4096, response cap 512, two-minute keep-alive.
+- Added loopback-only provider and desktop/mobile runtime selection. No cloud fallback, automatic pull or LAN endpoint. Swift source and storage schema remain unchanged.
+- Added ignored `.local-ai/` runtime/model storage, cloud-disabled loopback daemon script, production preview script, setup/acceptance notes and opt-in real-inference test.
+- Validation: 14 unit tests passed; real-inference test deliberately skipped until weights exist; strict TypeScript/Vite production build passed with existing WebLLM chunk-size warning; shell syntax and diff whitespace checks passed.
+- Browser verification reached the real daemon and correctly reported missing model weights. Fixed browser `fetch` binding discovered during this test.
+- Runtime installed in `.local-ai/runtime/`; daemon reports Apple M5 Metal and cloud disabled. Model download remains in progress; do not claim working Qwen chat, measured throughput or disconnected-network acceptance yet.
+- Runtime service session and preview run on loopback. Download log: `.local-ai/pull.log`; daemon log: `.local-ai/server.log`. Resume installation if interrupted using the pull command in `docs/MAC-LOCAL-AI.md`.
+- Next: finish download, run `NHOMEAI_LIVE_TEST=1 pnpm test -- src/ollama-live.test.ts`, verify production UI reply/recall/Stop/retry/persistence, record model digest and practical resource measurements. Owner offline and thermal/battery acceptance remains required. No main merge.
+
 ### 2026-10-01 - Codex local browser AI chat
 - Installed pinned `@mlc-ai/web-llm` 0.2.82 plus Vitest and React types; updated the pnpm lockfile. Added strict TypeScript checking to the production build.
 - Replaced the placeholder with provider-neutral lifecycle/status interfaces and a WebLLM adapter. Default model is `Llama-3.2-1B-Instruct-q4f16_1-MLC`; dedicated worker handles on-device WebGPU inference. No Mac server or cloud inference API is used.

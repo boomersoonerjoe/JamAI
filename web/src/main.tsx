@@ -6,6 +6,7 @@ import type { AppData, Conversation, Message } from './types';
 import { buildPrompt } from './context';
 import type { ChatProvider, ProviderStatus } from './provider';
 import { LocalChatProvider } from './local-provider';
+import { OllamaChatProvider } from './ollama-provider';
 
 const id = () => crypto.randomUUID();
 const msg = (text: string, role: 'user' | 'assistant'): Message => ({ id: id(), text, role, createdAt: new Date().toISOString() });
@@ -14,12 +15,13 @@ function App() {
   const dataRef = useRef(data);
   const [active, setActive] = useState<string>();
   const [draft, setDraft] = useState('');
-  const [status, setStatus] = useState<ProviderStatus>({ phase: 'idle', message: 'Load the model to start local chat.' });
+  const [status, setStatus] = useState<ProviderStatus>({ phase: 'idle', message: 'Connect or load the selected runtime to start local chat.' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState<Conversation>();
   const controller = useRef<AbortController | null>(null);
-  const provider: ChatProvider = useMemo(() => new LocalChatProvider(), []);
+  const [providerID, setProviderID] = useState(() => /Macintosh|Windows|X11|Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent) ? 'ollama' : 'webllm');
+  const provider: ChatProvider = useMemo(() => providerID === 'ollama' ? new OllamaChatProvider() : new LocalChatProvider(), [providerID]);
   const current = data.conversations.find(c => c.id === active);
   function update(next: AppData) {
     saveData(next);
@@ -68,11 +70,14 @@ function App() {
   return <main>
     <header><h1>NhomeAI</h1><small>Private cross-platform AI</small></header>
     <section className="model">
-      <strong>{provider.name}</strong>
-      <p>First load downloads model assets from Hugging Face and the WebLLM runtime CDN, then caches them in this browser. Chats run on this device. Allow roughly 1 GB or more of free storage and memory; keep the app open while loading.</p>
+      <label>Chat runtime <select aria-label="Chat runtime" value={providerID} disabled={busy || status.phase === 'loading'} onChange={e => {
+        setProviderID(e.target.value); setStatus({ phase: 'idle', message: 'Connect or load the selected runtime to start chat.' }); setError('');
+      }}><option value="ollama">Local Ollama (Mac / PC)</option><option value="webllm">On-device browser (WebGPU)</option></select></label>
+      <p><strong>{provider.name}</strong></p>
+      {providerID === 'ollama' ? <p>Install Ollama and Qwen3.5 4B once, then connect. Chats stay on this computer and work offline. Ollama must be running at 127.0.0.1:11434. No cloud fallback.</p> : <p>First load downloads model assets from Hugging Face and the WebLLM runtime CDN, then caches them in this browser. Chats run on this device. Allow roughly 1 GB or more of free storage and memory; keep the app open while loading.</p>}
       <div role="status" aria-live="polite">{status.message}</div>
       {status.phase === 'loading' && <progress aria-label="Model loading" max={1} value={status.progress ?? 0} />}
-      {status.phase !== 'ready' && <button disabled={status.phase === 'loading'} onClick={load}>{status.phase === 'error' ? 'Retry model load' : 'Load local model'}</button>}
+      {status.phase !== 'ready' && <button disabled={status.phase === 'loading'} onClick={load}>{status.phase === 'error' ? 'Retry model load' : providerID === 'ollama' ? 'Connect local Ollama' : 'Load local model'}</button>}
     </section>
     <section className="layout"><aside>
       <button disabled={busy} onClick={create}>+ New chat</button>

@@ -1,8 +1,12 @@
+# Local desktop chat
+
+See [Mac local chat](MAC-LOCAL-AI.md) for the Ollama desktop adapter, setup and validation. The runtime selector preserves the browser provider described below.
+
 # Local browser chat acceptance
 
 ## Implemented runtime
 
-The default PWA provider is WebLLM 0.2.82 with `Llama-3.2-1B-Instruct-q4f16_1-MLC` (4-bit weights). A dedicated module Web Worker executes WebGPU inference on the client device. No Mac inference service, API key, or cloud inference endpoint is used. `ChatProvider` keeps model/runtime details outside the UI and storage; the local adapter accepts a different model ID for future model changes.
+The browser PWA provider is WebLLM 0.2.82 with `Llama-3.2-1B-Instruct-q4f16_1-MLC` (4-bit weights). A dedicated module Web Worker executes WebGPU inference on the client device. No Mac inference service, API key, or cloud inference endpoint is used. `ChatProvider` keeps model/runtime details outside the UI and storage; the local adapter accepts a different model ID for future model changes.
 
 Loading is explicit: tap **Load local model**. Initial model/config/tokenizer downloads use Hugging Face and the WebLLM model-library CDN; third parties see normal asset requests, not chat prompts. WebLLM manages the model cache. Browser storage can be evicted, so offline availability is conditional on retained assets. The app shell and bundled worker/runtime are separately cached by a generated service worker. There is no remote fallback.
 
