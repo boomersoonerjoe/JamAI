@@ -37,12 +37,12 @@ If an incoming model suspects the previous session ended abruptly:
 Goal: after each meaningful checkpoint, the repository itself should contain enough information for a different AI model to resume safely even if the prior model disappeared without warning.
 
 ## Session Metadata
-- Last Active Model: Codex
-- Last Updated: 2026-09-30
+- Last Active Model: ChatGPT (GPT-5.6 Sol)
+- Last Updated: 2026-10-01
 - Canonical Hand-Off Location: `PROGRESS.md` on the default branch (`main`)
-- Active Development Branch: `codex/v1-local-chat-validation`; session build/chat fixes, tests, and documentation are checkpointed locally on this feature branch. No push or merge into `main` has been performed.
-- Status: V1 SIMULATOR CHAT ACCEPTANCE PASSED; PHYSICAL-DEVICE VALIDATION PENDING
-- Active Milestone: Version 1 - Chat
+- Active Development Branch: `codex/cross-platform-foundation`
+- Status: CROSS-PLATFORM MIGRATION STARTED; KNOWN-GOOD APPLE V1 PRESERVED AT `395d298`
+- Active Milestone: Version 1 - Cross-platform Chat
 
 The actual Git branch HEAD is the authoritative latest commit. Do not hard-code a commit hash here as the permanent source of truth because updating this file creates another commit.
 
@@ -60,6 +60,9 @@ Privacy and security remain important. Prefer local/private behavior where pract
 - V4 - Expansion: reassess desired features after real use.
 
 Scope guard: do not expand image generation or voice chat during V1 unless required for compatibility or explicitly requested by the owner.
+
+## Cross-Platform Requirement
+NhomeAI must not be Apple-only. The primary product must support iPhone/iPad, Android, macOS, Windows, and Linux without requiring an Apple Developer Program subscription or recurring seven-day iOS re-signing. Apple Foundation Models and MLX may remain optional adapters, but cannot be required by the core product. The primary client direction is an installable PWA/web client with portable state and provider-neutral AI interfaces. See `docs/CROSS-PLATFORM-ARCHITECTURE.md`.
 
 ## Long-Term Architecture
 Target direction:
@@ -175,6 +178,14 @@ If the session ends before these steps can be completed, the Abrupt-Stop / Usage
 > Continue build. Read `PROGRESS.md` from `main` first, inspect the newest commits and active development PR/branch, then continue the recorded PocketAI V1 task from the actual repository state. Preserve the documented architecture and scope. Do not restart completed work, work directly on `main` for unfinished features, make spending decisions, or report builds/tests/device behavior as verified unless they were actually run. If the prior session appears to have ended abruptly, reconstruct the latest safe checkpoint from GitHub before continuing.
 
 ## Session Log
+### 2026-10-01 - ChatGPT cross-platform migration
+- Confirmed `boomersoonerjoe/My-AI-App` is the NhomeAI/PocketAI repository by locating known-good commit `395d298`.
+- Created `codex/cross-platform-foundation` from that exact checkpoint; did not modify `main`.
+- Added `web/` installable-PWA foundation with responsive chat UI, schema-v1 conversation/memory/image-draft types, local browser persistence, bounded context construction matching Swift V1 semantics, and a provider-neutral `ChatProvider` boundary.
+- Added `docs/CROSS-PLATFORM-ARCHITECTURE.md`. Existing Swift/Xcode/Apple/MLX code remains intact as tested reference/optional adapter code.
+- No paid service was connected. No Apple Developer membership is required by the target architecture.
+- Validation: repository structure/source inspected; browser build has NOT yet been executed in this connector-only session. Next step is to run `npm install && npm run build` in `web/`, then implement the first real local cross-platform chat provider/runtime and state migration/import.
+
 ### 2026-09-30 - Codex / owner manual acceptance
 - Resolved and compiled MLXLLM, MLXLMCommon, MLXHuggingFace, and Tokenizers at the existing pinned versions. Fixed the Debug app/package architecture mismatch with `ONLY_ACTIVE_ARCH = YES` and preserved it in the generator.
 - Disabled chat save/send controls while model switching; rejected unsupported MLX simulator loading with an actionable error.
