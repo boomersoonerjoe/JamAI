@@ -178,6 +178,14 @@ If the session ends before these steps can be completed, the Abrupt-Stop / Usage
 > Continue build. Read `PROGRESS.md` from `main` first, inspect the newest commits and active development PR/branch, then continue the recorded PocketAI V1 task from the actual repository state. Preserve the documented architecture and scope. Do not restart completed work, work directly on `main` for unfinished features, make spending decisions, or report builds/tests/device behavior as verified unless they were actually run. If the prior session appears to have ended abruptly, reconstruct the latest safe checkpoint from GitHub before continuing.
 
 ## Session Log
+### 2026-10-01 - Codex cross-platform production build
+- Fetched origin and checked out `codex/cross-platform-foundation`, tracking the remote branch; confirmed `395d298` is an ancestor.
+- Read this hand-off and `docs/CROSS-PLATFORM-ARCHITECTURE.md` before changes.
+- Installed `web/` dependencies with bundled Node/pnpm because Node/npm were absent from the shell PATH. Added `web/pnpm-lock.yaml` and explicit esbuild install-script approval in `web/pnpm-workspace.yaml`.
+- Production validation: `pnpm run build` passed with Vite 7.3.6 (27 modules). No build errors or application-source fixes were required.
+- Added ignore rules for web dependencies, production output, and the local pnpm store. Existing Swift/Apple V1 code is unchanged; no merge into `main` was performed.
+- Browser/device runtime behavior remains unverified. Next development step is the first real local cross-platform chat provider/runtime and state migration/import; this session only validated the production build.
+
 ### 2026-10-01 - ChatGPT cross-platform migration
 - Confirmed `boomersoonerjoe/My-AI-App` is the NhomeAI/PocketAI repository by locating known-good commit `395d298`.
 - Created `codex/cross-platform-foundation` from that exact checkpoint; did not modify `main`.
