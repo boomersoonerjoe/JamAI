@@ -37,11 +37,11 @@ If an incoming model suspects the previous session ended abruptly:
 Goal: after each meaningful checkpoint, the repository itself should contain enough information for a different AI model to resume safely even if the prior model disappeared without warning.
 
 ## Session Metadata
-- Last Active Model: ChatGPT (GPT-5.6 Sol)
-- Last Updated: 2026-09-13
+- Last Active Model: Codex
+- Last Updated: 2026-09-30
 - Canonical Hand-Off Location: `PROGRESS.md` on the default branch (`main`)
-- Active Development Branch: determined per development session and recorded here when work begins
-- Status: READY FOR V1 DEVELOPMENT
+- Active Development Branch: `codex/v1-local-chat-validation`; session build/chat fixes, tests, and documentation are checkpointed locally on this feature branch. No push or merge into `main` has been performed.
+- Status: V1 SIMULATOR CHAT ACCEPTANCE PASSED; PHYSICAL-DEVICE VALIDATION PENDING
 - Active Milestone: Version 1 - Chat
 
 The actual Git branch HEAD is the authoritative latest commit. Do not hard-code a commit hash here as the permanent source of truth because updating this file creates another commit.
@@ -91,7 +91,7 @@ Repository inspection shows substantial reusable V1 groundwork:
 IMPORTANT: implemented in source does not mean device-verified. Compilation, package resolution, XCTest execution, real-device behavior, offline execution, MLX performance, memory pressure, and thermal behavior still require Mac/iPhone validation unless later recorded as completed.
 
 ## Work Currently In Progress
-No V1 feature should be considered half-finished solely because of this hand-off setup. The hand-off framework is established; the next substantive work is Version 1 chat development on an appropriate feature branch.
+The existing V1 local chat baseline builds successfully and has passed real-model integration tests and the owner's manual simulator end-to-end test. Continue physical-device acceptance and fix reproduced reliability issues; do not restart the chat implementation or add new features yet.
 
 Existing image-related source should remain intact unless a V1 chat change requires a compatibility fix.
 
@@ -99,11 +99,11 @@ Existing image-related source should remain intact unless a V1 chat change requi
 1. Read this entire file before modifying code.
 2. Inspect recent commits, open PRs/feature branches, repository tree, and `docs/ROADMAP.md`.
 3. Choose or resume the appropriate feature branch. Never implement unfinished AI-generated feature work directly on `main`.
-4. Establish the V1 chat baseline without redesigning working abstractions unnecessarily.
-5. Prioritize chat reliability, persistence/memory, local-model handling, switching/streaming/cancellation/error states, and a provider-neutral hybrid/remote boundary.
+4. Preserve the passed simulator baseline: package resolution/build, 19 XCTest cases, real Apple-model responses, and owner's manual launch/send/follow-up recall of `7429`.
+5. Next validate on the target physical iPhone: signing/install, offline Apple chat, conversation and saved Memory-note persistence/recall across relaunch, Stop/retry/background behavior, keyboard/accessibility, and latency/memory/thermal behavior. Then validate the existing MLX download/load/switch/generate/cancel/delete lifecycle on device. Do not add remote, voice, or image features during this acceptance work.
 6. Keep the existing `ChatEngine` seam unless concrete evidence shows it must change. Prefer adding a future remote engine/routing layer rather than coupling UI or persistence directly to a provider.
 7. Do not connect paid services or make spending decisions without explicit owner approval.
-8. When Mac/Xcode becomes necessary, stop at a clean commit and record the exact validation needed below.
+8. Mac/Xcode simulator validation is available and passed. Physical iPhone signing/install requires the owner's team/account and device setup; record exact device results without extrapolating from simulator tests.
 9. At the end of every work session, update this file with completed work, unfinished work, validation status, blockers, active branch, and precise next steps.
 
 ## Architectural Decisions and Guardrails
@@ -132,10 +132,11 @@ Existing image-related source should remain intact unless a V1 chat change requi
 
 ### Mac / Xcode Validation Queue
 Mark PASS/FAIL only after actual execution:
-- [ ] Resolve Swift packages in the intended Xcode version.
-- [ ] Compile the PocketAI app target.
-- [ ] Compile and run the XCTest suite.
-- [ ] Launch and inspect primary screens.
+- [x] Resolve Swift packages in Xcode (pinned products resolved).
+- [x] Compile the PocketAI app target for iOS Simulator.
+- [x] Compile and run the XCTest suite (19 passed, including real Apple-model streaming/context/persistence).
+- [x] Manual simulator chat acceptance: owner verified launch, new conversation, local AI response, and follow-up recall of `7429` on iPhone 18 Pro.
+- [ ] Inspect remaining primary screens and physical-device keyboard/accessibility layouts.
 - [ ] Verify conversation/memory persistence across relaunch.
 - [ ] Test Apple on-device chat availability, streaming, and cancellation where supported.
 - [ ] Test MLX model download, verification, load, generation, cancellation, and deletion.
@@ -152,7 +153,9 @@ Mark PASS/FAIL only after actual execution:
 - Local model management: `PocketAI/ModelLibrary.swift`
 
 ## Current Blockers / Owner Decisions Needed
-None recorded at this hand-off point.
+The simulator chat gate is passed; Device Hub automation timeouts are not a blocker to that accepted manual result. Physical-device signing/install and acceptance remain pending. MLX inference requires a physical iPhone; the simulator loading guard now prevents unsupported execution. The session checkpoint is local on `codex/v1-local-chat-validation` and has not been pushed or merged.
+
+The `7429` test verifies conversation context, not the separate saved Memory-note feature or persistence after termination. Do not mark those remaining checks passed without execution.
 
 If a model encounters a decision that materially changes architecture, privacy, spending, scope, or requires owner hardware interaction, stop at a clean point and document the question rather than guessing.
 
@@ -172,6 +175,14 @@ If the session ends before these steps can be completed, the Abrupt-Stop / Usage
 > Continue build. Read `PROGRESS.md` from `main` first, inspect the newest commits and active development PR/branch, then continue the recorded PocketAI V1 task from the actual repository state. Preserve the documented architecture and scope. Do not restart completed work, work directly on `main` for unfinished features, make spending decisions, or report builds/tests/device behavior as verified unless they were actually run. If the prior session appears to have ended abruptly, reconstruct the latest safe checkpoint from GitHub before continuing.
 
 ## Session Log
+### 2026-09-30 - Codex / owner manual acceptance
+- Resolved and compiled MLXLLM, MLXLMCommon, MLXHuggingFace, and Tokenizers at the existing pinned versions. Fixed the Debug app/package architecture mismatch with `ONLY_ACTIVE_ARCH = YES` and preserved it in the generator.
+- Disabled chat save/send controls while model switching; rejected unsupported MLX simulator loading with an actionable error.
+- Generic simulator build passed. All 19 XCTest cases passed on iPhone 18 Pro/iOS 27.0, including real Apple-model streaming, follow-up recall, and persistence when reopening the store.
+- Owner manually passed on-screen V1 chat: launch, conversation creation, local response, remember `7429`, follow-up correctly answered `7429`. Treat this gate as complete; do not repeat it solely because Device Hub automation timed out.
+- Updated build notes, roadmap, and canonical progress. No new features added. Physical-device/offline/Memory-note/relaunch/MLX/performance acceptance remains as listed above.
+- Checkpointed session changes on `codex/v1-local-chat-validation` at the owner's request; no GitHub push, merge into `main`, or device signing/install was performed. Read the branch HEAD for the commit identity.
+
 ### 2026-09-13 - ChatGPT (GPT-5.6 Sol)
 - Created and refined the PocketAI-specific hand-off framework for cross-model continuity.
 - Replaced generic Node/JWT examples with PocketAI's actual architecture and V1 scope.
