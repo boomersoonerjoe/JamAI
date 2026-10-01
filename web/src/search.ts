@@ -3,7 +3,7 @@ export type SearchMode = 'auto' | 'always' | 'web' | 'off';
 export interface SearchSource { title: string; url: string; excerpt: string; publisher?: string; publishedAt?: string }
 export interface SearchEvidence {
   query: string; provider: string; fetchedAt: string; timeZone: string;
-  scope: 'today' | 'recent' | 'web'; sources: SearchSource[];
+  scope: 'today' | 'recent' | 'web' | 'weather'; sources: SearchSource[];
 }
 export function needsCurrentInformation(text: string) {
   return /\b(news|headlines?|breaking|weather|forecast|latest|current|recent|live|up[- ]to[- ]date|stock|stocks|price|prices|scores?|exchange rate|opening hours|release date|availability|products?|buy|buying|shopping|cost|costs|deals?|research|compare|comparison|reviews?|recommend(?:ations?)?|current events|laptops?|smartphones?|tablets?|macbook|iphone)\b|\b(search|browse|look up|google)\b|\b(how much|where can i buy|who (?:is|are)|when (?:is|does)|is .+ (?:open|available|released))\b|\b(?:today|tonight|this week|this month|this year|right now)\b.*\b(happen|happening|happened|happenings|in|at)\b/i.test(text);

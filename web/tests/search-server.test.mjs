@@ -1,6 +1,6 @@
 import { request as httpRequest } from 'node:http';
 import { it, expect } from 'vitest';
-import { parseResults, retrieveSearch, validateSearch, newsSearchQuery, parseWebHTML, retrieveWeb, webSearchQuery } from '../scripts/search-service.mjs';
+import { parseResults, retrieveSearch, validateSearch, newsSearchQuery, parseWebHTML, retrieveWeb, webSearchQuery, weatherLocation, matchesWeatherLocation, retrieveCurrentWeather } from '../scripts/search-service.mjs';
 import { makeServer } from '../scripts/server.mjs';
 const request = { query: 'Tulsa news today', kind: 'news', today: true, day: '2026-10-01', timeZone: 'America/Chicago' };
 const now = new Date('2026-10-02T04:30:00Z');
@@ -90,11 +90,56 @@ it('falls back to a second free HTML engine, preserving query privacy and cancel
 });
 
 it('normalizes research and comparison commands into subject-first search queries', () => {
-  expect(webSearchQuery('Research solar panel efficiency')).toBe('solar panel efficiency');
-  expect(webSearchQuery('Compare latest budget laptops')).toBe('laptops latest budget');
+  expect(webSearchQuery('Research solar panel efficiency')).toBe('Research solar panel efficiency');
+  expect(webSearchQuery('Compare latest budget laptops')).toBe('Compare latest budget laptops');
 });
 it('fails explicitly when all public engines are unavailable and ignores arbitrary upstream parameters', async () => {
   const calls = [];
   await expect(retrieveWeb({...request, kind:'web', url:'http://127.0.0.1/private'},new AbortController().signal,async url => { calls.push(url.hostname); return new Response('Unavailable',{status:429}); },now)).rejects.toThrow('unavailable');
   expect(calls).toEqual(['search.brave.com','www.bing.com','www.bing.com']);
+});
+
+it('preserves locations, details, spelling and order in outgoing web queries', async () => {
+  const query = 'current Tulsa, OK weather in Fahrenheit';
+  const calls = [];
+  await retrieveWeb({...request, query,kind:'web'},new AbortController().signal,async url => {
+    if (url.searchParams.has('q')) calls.push(url.searchParams.get('q'));
+    return new Response('<li class="b_algo"><h2><a href="https://example.org/weather/tulsa-ok">Tulsa, OK Weather</a></h2><div class="b_caption"><p>Weather source</p></div></li>');
+  },now);
+  expect(calls.every(value => value === query)).toBe(true);
+});
+it('rejects another city and requires an actual weather page for the requested location', () => {
+  expect(weatherLocation('current tulsa weather')).toBe('tulsa');
+  expect(weatherLocation('What is the current weather in Tulsa, OK today?')).toBe('Tulsa, OK');
+  expect(matchesWeatherLocation({title:'Waxahachie, TX Weather',url:'https://weather.example/waxahachie'},'Tulsa')).toBe(false);
+  expect(matchesWeatherLocation({title:'Tulsa, OK Weather',url:'https://weather.example/tulsa'},'Tulsa')).toBe(true);
+  expect(matchesWeatherLocation({title:'City of Tulsa',url:'https://cityoftulsa.org/'},'Tulsa')).toBe(false);
+});
+it('discards Waxahachie weather and preserves important details on every retry', async () => {
+  const query = 'What is the current Tulsa weather?'; const calls = [];
+  const source = (city) => `<div class="snippet"><a href="https://example.org/weather/${city.toLowerCase()}"><div class="search-snippet-title">${city} Weather</div></a><div class="generic-snippet"><div class="content">Weather conditions</div></div></div>`;
+  const result = await retrieveWeb({...request,query,kind:'web'},new AbortController().signal,async url => {
+    if (url.searchParams.has('q')) calls.push(url.searchParams.get('q'));
+    if (calls.length === 1) return new Response(source('Waxahachie'));
+    if (calls.length < 4) return new Response('Unavailable',{status:503});
+    return new Response(source('Tulsa'));
+  },now);
+  expect(result.sources).toHaveLength(1); expect(result.sources[0].title).toBe('Tulsa Weather');
+  expect(calls[0]).toBe(query);
+  expect(calls.every(value => value.includes('current Tulsa weather'))).toBe(true);
+});
+
+it('resolves exact weather city/state, preserves Celsius and rejects stale/wrong-city API data', async () => {
+  const place = {name:'Tulsa',admin1:'Oklahoma',country:'United States',country_code:'US',population:400000,latitude:36.15,longitude:-95.99};
+  const c = {time:now.getTime()/1000,temperature_2m:20,apparent_temperature:19,relative_humidity_2m:50,wind_speed_10m:10};
+  const u = {temperature_2m:'°C',apparent_temperature:'°C',relative_humidity_2m:'%',wind_speed_10m:'km/h'};
+  const fetcher = async url => {
+    if (url.hostname === 'geocoding-api.open-meteo.com') { expect(url.searchParams.get('name')).toBe('Tulsa'); return new Response(JSON.stringify({results:[place]})); }
+    expect(url.searchParams.get('temperature_unit')).toBe('celsius');
+    return new Response(JSON.stringify({current:c,current_units:u}));
+  };
+  const data = await retrieveCurrentWeather({...request,query:'current Tulsa, OK weather in Celsius'},'Tulsa, OK',new AbortController().signal,fetcher,now);
+  expect(data.sources[0].excerpt).toContain('Tulsa, Oklahoma'); expect(data.sources[0].excerpt).toContain('20°C');
+  await expect(retrieveCurrentWeather(request,'Tulsa, TX',new AbortController().signal,fetcher,now)).rejects.toThrow('location');
+  await expect(retrieveCurrentWeather(request,'Tulsa',new AbortController().signal,async url => new Response(JSON.stringify(url.hostname.includes('geocoding') ? {results:[place]} : {current:{...c,time:c.time-10000},current_units:u})),now)).rejects.toThrow('stale');
 });

@@ -1,3 +1,11 @@
+# Latest fix: weather query/location preservation, 2026-10-01
+
+- Removed broad web-query command stripping/adjective reordering. Primary web queries preserve the trimmed original text. Bounded retries add a subject prefix and remove only leading question scaffolding; location spelling, qualifiers, units and other details remain. Named subject checks retain product/research relevance.
+- Reproduced Bing returning Waxahachie weather despite Tulsa in the outgoing query. Weather results now require the requested location in the title/URL and an actual weather page. Unmatched sources fail closed.
+- Added free noncommercial Open-Meteo current weather for exactly resolved named cities, respecting explicit state/country and Celsius/Fahrenheit. Ambiguous places fail closed unless one exact-name place clearly dominates in population; resolved full place is shown. No GPS or device-location assumptions. Freshness and units validated; forecasts/historical questions keep search rather than silently receiving current data.
+- Mac: production build passed; 42 unit/HTTP and 8 live tests passed. Live current Tulsa returned timestamped numerical weather-model data through local Qwen. Browser “What is the current Tulsa weather?” verified the same Tulsa/Oklahoma location with a source link. Model estimates are clearly labeled, not claimed as station observations. Offline failure behavior and free/local-first architecture preserved.
+- Checkpoint local only on codex/cross-platform-foundation. No push or merge. Other-platform validation and specialized forecast/station-observation support remain pending.
+
 # Latest milestone: general web search, 2026-10-01
 
 - Expanded retrieval beyond RSS with free Brave/Bing organic HTML search, Bing RSS fallback, bounded fetch/parse/cancellation, safe decoded links and exact excerpts. No keys, paid API, extra dependency or cloud inference. Qwen/Ollama unchanged.

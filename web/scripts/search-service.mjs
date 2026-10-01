@@ -60,11 +60,28 @@ export function parseResults(xml, request, now = new Date()) {
   return sources.slice(0, 4);
 }
 export function webSearchQuery(question) {
-  const cleaned = question.replace(/^(?:please\s+)?(?:research|compare|search (?:for)?|look up|find (?:me)?)(?:\s+)/i, '').replace(/\s*[?;]\s*(?:give|show|provide|summari[sz]e).*$/i, '').replace(/\b(?:give me a (?:short|brief) summary|show sources)\b/gi, '').trim();
-  // Put the subject before generic recency/price adjectives; some engines over-weight the first word.
-  const words = cleaned.split(/\s+/);
-  const modifiers = /^(?:latest|current|recent|best|budget|cheap|affordable)$/i;
-  return [...words.filter(w => !modifiers.test(w)), ...words.filter(w => modifiers.test(w))].join(' ');
+  // Preserve the user's spelling, location, qualifiers, units and word order.
+  return question.trim();
+}
+export function weatherLocation(question) {
+  if (!/\bweather\b/i.test(question)) return undefined;
+  const after = question.match(/\bweather\s+(?:in|for|at)\s+(.+?)(?:[?!;]|$)/i)?.[1];
+  const before = question.match(/^(.+?)\s+weather\b/i)?.[1];
+  let location = after && !/^(?:fahrenheit|celsius)\b/i.test(after) ? after : before;
+  if (!location) return undefined;
+  location = location.replace(/^(?:(?:what(?:'s| is)|show me|tell me|give me|i want|please|the|current|currently|local|today's)\s+)+/i, '')
+    .replace(/\s+in (?:fahrenheit|celsius).*$/i, '')
+    .replace(/\s+(?:right now|today|tonight|tomorrow|this week|currently|current|weather|forecast)(?:\s.*)?$/i, '').trim();
+  if (!location || !/^[\p{L}\p{N} .,'’-]+$/u.test(location)) return undefined;
+  return location;
+}
+export function matchesWeatherLocation(source, location) {
+  if (!location) return true;
+  const words = location.toLocaleLowerCase('en').match(/[\p{L}\p{N}]+/gu) || [];
+  let decoded;
+  try { decoded = decodeURIComponent(source.url); } catch { return false; }
+  const target = `${source.title} ${decoded}`.toLocaleLowerCase('en');
+  return words.every(word => new RegExp(`\\b${word}\\b`, 'i').test(target)) && /weather|forecast|conditions/i.test(target);
 }
 export function parseWebHTML(html, engine) {
   const $ = load(html), sources = [], seen = new Set();
@@ -94,25 +111,62 @@ export function parseWebHTML(html, engine) {
   });
   return sources.slice(0, 4);
 }
+export async function retrieveCurrentWeather(request, location, signal, requestFetch = fetch, now = new Date()) {
+  const [city, region] = location.split(',').map(s => s.trim());
+  const geocode = new URL('https://geocoding-api.open-meteo.com/v1/search');
+  geocode.search = new URLSearchParams({name:city,count:'10',language:'en',format:'json'}).toString();
+  const get = async url => JSON.parse(await boundedText(await requestFetch(url, {signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:'error'})));
+  const data = await get(geocode);
+  const aliases = {OK:'Oklahoma',TX:'Texas',NY:'New York',CA:'California'};
+  const matches = (data.results || []).filter(p => p.name.toLowerCase() === city.toLowerCase() && (!region || [p.admin1,p.country,p.country_code,aliases[region.toUpperCase()]].some(value => value && (value.toLowerCase() === region.toLowerCase() || value === p.admin1 && aliases[region.toUpperCase()] === value))));
+  matches.sort((a,b) => (b.population || 0) - (a.population || 0));
+  const place = matches[0];
+  if (!place || !Number.isFinite(place.latitude) || !Number.isFinite(place.longitude)) throw new Error('Requested weather location could not be verified.');
+  if (matches.length > 1 && (place.population || 0) < 10 * (matches[1].population || 1)) throw new Error('Weather location is ambiguous. Include a state or country.');
+  const unit = /celsius|centigrade/i.test(request.query) ? 'celsius' : /fahrenheit/i.test(request.query) || place.country_code === 'US' ? 'fahrenheit' : 'celsius';
+  const url = new URL('https://api.open-meteo.com/v1/forecast');
+  url.search = new URLSearchParams({latitude:String(place.latitude),longitude:String(place.longitude),current:'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m',temperature_unit:unit,wind_speed_unit:unit === 'fahrenheit' ? 'mph' : 'kmh',timeformat:'unixtime',timezone:'UTC',forecast_days:'1'}).toString();
+  const weather = await get(url), c = weather.current, u = weather.current_units;
+  if (!c || !u || ![c.time,c.temperature_2m,c.apparent_temperature,c.relative_humidity_2m,c.wind_speed_10m].every(Number.isFinite) || now.getTime()/1000-c.time > 7200 || c.time-now.getTime()/1000 > 900) throw new Error('Weather data is missing or stale.');
+  const expectedUnit = unit === 'fahrenheit' ? '°F' : '°C';
+  if (u.temperature_2m !== expectedUnit || u.apparent_temperature !== expectedUnit || u.relative_humidity_2m !== '%' || !['mp/h','km/h'].includes(u.wind_speed_10m)) throw new Error('Weather data units do not match the request.');
+  const name = [place.name,place.admin1,place.country].filter(Boolean).join(', ');
+  const excerpt = `${name}: model-based current weather at ${new Date(c.time*1000).toISOString()}. Temperature ${c.temperature_2m}${u.temperature_2m}; feels like ${c.apparent_temperature}${u.apparent_temperature}; humidity ${c.relative_humidity_2m}${u.relative_humidity_2m}; wind ${c.wind_speed_10m} ${u.wind_speed_10m}. This is a weather-model estimate, not a station observation.`;
+  return {query:request.query,provider:'Open-Meteo (free noncommercial weather)',fetchedAt:now.toISOString(),timeZone:request.timeZone,scope:'weather',sources:[{title:`${name} current weather model`,url:url.href,excerpt,publisher:'Open-Meteo · GeoNames location data'}]};
+}
 export async function retrieveWeb(request, signal, requestFetch = fetch, now = new Date()) {
   const query = webSearchQuery(request.query);
+  const location = weatherLocation(request.query);
+  if (location && !/tomorrow|next|yesterday|last|forecast|this week/i.test(request.query)) {
+    try { return await retrieveCurrentWeather(request,location,signal,requestFetch,now); } catch { signal.throwIfAborted(); }
+  }
   const endpoints = [
     ['brave', 'Brave web search', `https://search.brave.com/search?${new URLSearchParams({q: query, source: 'web'})}`],
     ['bing', 'Bing web search', `https://www.bing.com/search?${new URLSearchParams({q: query})}`],
     ['rss', 'Bing web-search RSS fallback', `https://www.bing.com/search?${new URLSearchParams({q: query, format: 'rss'})}`],
   ];
+  const subject = location ? 'weather' : query.match(/\b(laptops?|smartphones?|tablets?|macbook|iphone)\b/i)?.[0] ?? query.match(/^(?:please\s+)?research\s+(\S+)/i)?.[1];
+  if (subject) {
+    // Add a weather keyword prefix, removing only leading question scaffolding on retries.
+    // This retries engines that over-weight the first word without changing locations, units, dates or other search details.
+    for (const [engine, provider, value] of endpoints.slice(0, 2)) {
+      const retry = new URL(value); const focused = query.replace(/^(?:(?:what(?:'s| is)|please|the|can you (?:show|tell) me|show me|tell me)\s+)+/i, '').replace(/[?]+$/, '');
+      retry.searchParams.set('q', `${location ? `weather in ${location}` : subject} ${focused}`);
+      endpoints.push([engine, provider, retry.href]);
+    }
+  }
   const combined = AbortSignal.any([signal, AbortSignal.timeout(25000)]);
   for (const [engine, provider, url] of endpoints) {
     combined.throwIfAborted();
     try {
       const response = await requestFetch(new URL(url), { signal: AbortSignal.any([combined, AbortSignal.timeout(8000)]), redirect: 'error', headers: { Accept: 'text/html,application/rss+xml', 'User-Agent': 'NhomeAI/0.1 local-first personal search' } });
       const text = await boundedText(response);
-      const sources = engine === 'rss' ? parseResults(text, request, now) : parseWebHTML(text, engine);
+      const sources = (engine === 'rss' ? parseResults(text, request, now) : parseWebHTML(text, engine)).filter(source => matchesWeatherLocation(source, location)).filter(source => !subject || location || new RegExp(subject.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(`${source.title} ${source.excerpt}`));
       if (sources.length) return { query: request.query, provider, fetchedAt: now.toISOString(), timeZone: request.timeZone, scope: 'web', sources };
       // Empty/challenge pages are treated as unavailable; never solve or bypass challenges.
     } catch { combined.throwIfAborted(); }
   }
-  throw new Error('Free general web search is unavailable or returned no usable results. I cannot verify this question.');
+  throw new Error(location ? `No weather sources matched the requested location “${location}”. I cannot verify its current weather.` : 'Free general web search is unavailable or returned no usable results. I cannot verify this question.');
 }
 async function boundedText(response) {
   if (!response.ok) throw new Error(`Free search returned HTTP ${response.status}.`);

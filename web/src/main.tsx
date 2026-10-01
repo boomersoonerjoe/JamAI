@@ -100,7 +100,7 @@ function App() {
       <label>Internet search <select aria-label="Internet search" disabled={busy} value={searchMode} onChange={e => {
         const next = e.target.value as SearchMode; localStorage.setItem('nhomeai.search-mode.v1', next); setSearchMode(next);
       }}><option value="auto">Auto · current-information questions</option><option value="always">Always · automatic sources</option><option value="web">Always · general web</option><option value="off">Off · offline only</option></select></label>
-      <p>Free search sends this message’s search query to free web search sites (Bing/Brave) or news RSS. Saved notes and other chat turns stay local. AI processing stays on your device. Search can fail or be incomplete; current facts require retrieved evidence.</p>
+      <p>Free search sends this message’s search query to free web search sites (Bing/Brave) or news RSS; weather requests may use free Open-Meteo. Saved notes and other chat turns stay local. AI processing stays on your device. Search can fail or be incomplete; current facts require retrieved evidence.</p>
       {activity && <div role="status" aria-live="polite">{activity}</div>}
     </section>
     <section className="layout"><aside>
@@ -109,7 +109,7 @@ function App() {
     </aside><article>
       {current ? <>
         <div className="messages" aria-label="Conversation">{current.messages.map(m => <div key={m.id} className={m.role}><small>{m.role === 'user' ? 'You' : 'NhomeAI'}</small><div>{m.text}</div>{m.evidence && <div className="sources">
-          <small>{m.evidence.provider} · retrieved {new Date(m.evidence.fetchedAt).toLocaleString()} · {m.evidence.scope === 'today' ? `publication dates matched the device's local day (${m.evidence.timeZone})` : 'results may be incomplete or outdated'}.</small>
+          <small>{m.evidence.provider} · retrieved {new Date(m.evidence.fetchedAt).toLocaleString()} · {m.evidence.scope === 'today' ? `publication dates matched the device's local day (${m.evidence.timeZone})` : m.evidence.scope === 'weather' ? 'current model-based weather; not a station observation' : 'results may be incomplete or outdated'}.</small>
           <ol>{m.evidence.sources.filter(source => safeSourceURL(source.url)).map((source, index) => <li key={source.url}>
             <a href={source.url} target="_blank" rel="noopener noreferrer">[{index + 1}] {source.title}</a>
             <small>{source.publisher}{source.publishedAt ? ` · published ${new Date(source.publishedAt).toLocaleString()}` : ' · publication date not verified'}</small>

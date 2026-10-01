@@ -49,8 +49,8 @@ export async function answerConversation(conversation: Conversation, memories: M
       const text = "Sources were retrieved, but I couldn't validate the local AI's summary. I won't present unverified current facts. Open the sources or retrieved excerpts below, or retry.";
       options.onUpdate(text, evidence); return { text, evidence, retryable: true };
     }
-    const scope = evidence.scope === 'today' ? `News published on ${clock.localDate} in ${clock.timeZone}` : 'Retrieved search excerpts';
-    const text = selected.length ? `${scope} — an extractive summary selected by local AI:\n${selected.map(n => `• “${evidence!.sources[n - 1].excerpt}” [${n}]`).join('\n')}\n\nThese are source headlines/snippets, not full articles or complete coverage.${evidence.scope === 'web' ? ' Their publication dates and current accuracy are not verified.' : ''}` : "The retrieved excerpts don't verify an answer to your question. I won't guess. See the sources below.";
+    const scope = evidence.scope === 'today' ? `News published on ${clock.localDate} in ${clock.timeZone}` : evidence.scope === 'weather' ? 'Current weather model estimate' : 'Retrieved search excerpts';
+    const text = selected.length ? `${scope} — an extractive summary selected by local AI:\n${selected.map(n => `• “${evidence!.sources[n - 1].excerpt}” [${n}]`).join('\n')}\n\n${evidence.scope === 'weather' ? 'Source: Open-Meteo. Model estimate, not a station observation; resolved location and data time are shown above.' : 'These are source headlines/snippets, not full articles or complete coverage.'}${evidence.scope === 'web' ? ' Their publication dates and current accuracy are not verified.' : ''}` : "The retrieved excerpts don't verify an answer to your question. I won't guess. See the sources below.";
     options.onUpdate(text, evidence); return { text, evidence, retryable: false };
   }
   const text = await provider.generate({ prompt, device: clock }, text => options.onUpdate(text), options.signal);
