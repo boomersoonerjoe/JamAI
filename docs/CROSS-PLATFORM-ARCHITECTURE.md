@@ -7,13 +7,13 @@ NhomeAI is a private, single-owner AI system. Its core product must work on iPho
 1. **Portable client:** `web/` is the primary cross-platform UI/PWA.
 2. **Portable state:** conversations, memories, and image-draft concepts retain schema-v1 semantics from the tested Swift implementation.
 3. **Provider boundary:** the client talks to a `ChatProvider`; UI/storage must not depend on Apple Foundation Models, MLX, or any cloud vendor.
-4. **Local/private runtimes:** future providers may target a local service on the same computer, a trusted NhomeAI node on the LAN (for example the owner's Mac), or an explicitly configured private remote GPU/backend.
+4. **Local/private runtimes:** the default provider runs Llama 3.2 1B Instruct 4-bit in a dedicated browser Web Worker through WebLLM/WebGPU, on the client device. Initial asset downloads are explicit and browser-cached. No Mac or cloud inference is required. Future optional adapters may target a trusted LAN node or explicitly configured private backend. See `docs/LOCAL-AI-CHAT.md` for requirements and device acceptance.
 5. **Apple adapter:** the existing Swift/Apple implementation remains preserved as tested reference code and may later serve as an optional Apple-native adapter. It is not the required NhomeAI client.
 6. **Installability:** the web client is designed as a PWA so supported browsers can install it to the home screen/desktop without App Store distribution.
 
 ## Migration sequence
 - Phase A: portable PWA shell, schema, persistence, prompt/context behavior, provider interface.
-- Phase B: implement a local cross-platform chat runtime/provider and streaming transport.
+- Phase B: local WebLLM provider and streaming implemented; physical-iPhone model/runtime and offline acceptance pending.
 - Phase C: import/migrate existing PocketAI state and validate chat/memory parity.
 - Phase D: add optional LAN node discovery/configuration so phones can use stronger Mac/PC AI when desired.
 - Phase E: image provider, then voice/video according to the product roadmap.

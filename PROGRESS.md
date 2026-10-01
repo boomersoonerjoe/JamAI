@@ -37,11 +37,11 @@ If an incoming model suspects the previous session ended abruptly:
 Goal: after each meaningful checkpoint, the repository itself should contain enough information for a different AI model to resume safely even if the prior model disappeared without warning.
 
 ## Session Metadata
-- Last Active Model: ChatGPT (GPT-5.6 Sol)
+- Last Active Model: Codex
 - Last Updated: 2026-10-01
 - Canonical Hand-Off Location: `PROGRESS.md` on the default branch (`main`)
 - Active Development Branch: `codex/cross-platform-foundation`
-- Status: CROSS-PLATFORM MIGRATION STARTED; KNOWN-GOOD APPLE V1 PRESERVED AT `395d298`
+- Status: LOCAL WEBLLM CHAT IMPLEMENTED AND MAC BROWSER SMOKE TEST PASSED; PHYSICAL IPHONE ACCEPTANCE PENDING; APPLE V1 PRESERVED AT `395d298`
 - Active Milestone: Version 1 - Cross-platform Chat
 
 The actual Git branch HEAD is the authoritative latest commit. Do not hard-code a commit hash here as the permanent source of truth because updating this file creates another commit.
@@ -94,20 +94,18 @@ Repository inspection shows substantial reusable V1 groundwork:
 IMPORTANT: implemented in source does not mean device-verified. Compilation, package resolution, XCTest execution, real-device behavior, offline execution, MLX performance, memory pressure, and thermal behavior still require Mac/iPhone validation unless later recorded as completed.
 
 ## Work Currently In Progress
-The existing V1 local chat baseline builds successfully and has passed real-model integration tests and the owner's manual simulator end-to-end test. Continue physical-device acceptance and fix reproduced reliability issues; do not restart the chat implementation or add new features yet.
+The primary cross-platform PWA now runs Llama 3.2 1B Instruct 4-bit locally through WebLLM/WebGPU in a dedicated browser worker. Production build, strict TypeScript, and seven relevant tests pass. The Mac in-app browser successfully downloaded/loaded the real model, generated a response, recalled `7429` on a follow-up, and retained conversation history across page reload. These results do not establish physical-iPhone behavior.
 
-Existing image-related source should remain intact unless a V1 chat change requires a compatibility fix.
+The known-good Swift/Apple V1 remains unchanged. No paid service or remote inference has been enabled. Browser model assets require an initial download; retained caches are required for offline use. See `docs/LOCAL-AI-CHAT.md`.
 
 ## Immediate Next Steps for Incoming Model
-1. Read this entire file before modifying code.
-2. Inspect recent commits, open PRs/feature branches, repository tree, and `docs/ROADMAP.md`.
-3. Choose or resume the appropriate feature branch. Never implement unfinished AI-generated feature work directly on `main`.
-4. Preserve the passed simulator baseline: package resolution/build, 19 XCTest cases, real Apple-model responses, and owner's manual launch/send/follow-up recall of `7429`.
-5. Next validate on the target physical iPhone: signing/install, offline Apple chat, conversation and saved Memory-note persistence/recall across relaunch, Stop/retry/background behavior, keyboard/accessibility, and latency/memory/thermal behavior. Then validate the existing MLX download/load/switch/generate/cancel/delete lifecycle on device. Do not add remote, voice, or image features during this acceptance work.
-6. Keep the existing `ChatEngine` seam unless concrete evidence shows it must change. Prefer adding a future remote engine/routing layer rather than coupling UI or persistence directly to a provider.
-7. Do not connect paid services or make spending decisions without explicit owner approval.
-8. Mac/Xcode simulator validation is available and passed. Physical iPhone signing/install requires the owner's team/account and device setup; record exact device results without extrapolating from simulator tests.
-9. At the end of every work session, update this file with completed work, unfinished work, validation status, blockers, active branch, and precise next steps.
+1. Read this file and `docs/CROSS-PLATFORM-ARCHITECTURE.md`; inspect actual branch HEAD/source. Continue `codex/cross-platform-foundation`, never merge into `main` without owner instruction.
+2. Serve the production `web/dist/` at a trusted HTTPS origin accessible to the physical iPhone. No deployment or paid hosting was performed. A Mac LAN HTTP address is insufficient for WebGPU secure context.
+3. Execute all physical-iPhone checks in `docs/LOCAL-AI-CHAT.md`: first download/compile, real streaming/context, Stop/retry, persistence, Safari/Home Screen installation, airplane-mode cold launch/inference, cache retention, background/GPU-loss handling, keyboard/accessibility, memory/latency/battery/thermal behavior.
+4. Fix reproduced browser/device issues. Automatic device-loss recovery and model-load cancellation are not implemented; reload the app to recreate a failed runtime. Keep provider neutrality and app-owned context.
+5. Swift-state import/migration, memory-note editing, and user-facing model switching remain future work. Existing stored schema memory notes are included in the bounded prompt. Do not add voice/image/remote features during local-chat acceptance.
+6. Preserve Swift/Apple V1 and its recorded simulator gate. Do not extrapolate Mac/browser results to iPhone. Do not purchase or enable paid services.
+7. Commit/push coherent changes on the active feature branch and update this hand-off with exact validation and remaining work.
 
 ## Architectural Decisions and Guardrails
 - Single-user/private: optimize for one owner, not a public product.
@@ -156,11 +154,7 @@ Mark PASS/FAIL only after actual execution:
 - Local model management: `PocketAI/ModelLibrary.swift`
 
 ## Current Blockers / Owner Decisions Needed
-The simulator chat gate is passed; Device Hub automation timeouts are not a blocker to that accepted manual result. Physical-device signing/install and acceptance remain pending. MLX inference requires a physical iPhone; the simulator loading guard now prevents unsupported execution. The session checkpoint is local on `codex/v1-local-chat-validation` and has not been pushed or merged.
-
-The `7429` test verifies conversation context, not the separate saved Memory-note feature or persistence after termination. Do not mark those remaining checks passed without execution.
-
-If a model encounters a decision that materially changes architecture, privacy, spending, scope, or requires owner hardware interaction, stop at a clean point and document the question rather than guessing.
+Physical-iPhone hardware and a trusted HTTPS app origin are needed for device acceptance. No production site was deployed during this milestone. WebGPU presence alone does not guarantee model GPU capability or sufficient iPhone memory. Offline generation and browser cache retention are not yet verified. The historical Apple/MLX physical-device acceptance queue remains pending and separate from the primary PWA milestone.
 
 ## Mandatory End-of-Session Hand-Off
 Before another model takes over or a development session ends:
@@ -178,6 +172,16 @@ If the session ends before these steps can be completed, the Abrupt-Stop / Usage
 > Continue build. Read `PROGRESS.md` from `main` first, inspect the newest commits and active development PR/branch, then continue the recorded PocketAI V1 task from the actual repository state. Preserve the documented architecture and scope. Do not restart completed work, work directly on `main` for unfinished features, make spending decisions, or report builds/tests/device behavior as verified unless they were actually run. If the prior session appears to have ended abruptly, reconstruct the latest safe checkpoint from GitHub before continuing.
 
 ## Session Log
+### 2026-10-01 - Codex local browser AI chat
+- Installed pinned `@mlc-ai/web-llm` 0.2.82 plus Vitest and React types; updated the pnpm lockfile. Added strict TypeScript checking to the production build.
+- Replaced the placeholder with provider-neutral lifecycle/status interfaces and a WebLLM adapter. Default model is `Llama-3.2-1B-Instruct-q4f16_1-MLC`; dedicated worker handles on-device WebGPU inference. No Mac server or cloud inference API is used.
+- Implemented explicit model loading with progress/error/retry UI, real streaming and persisted assistant messages, Stop and response retry, request serialization, bounded context reuse, and engine-history reset per request. UI chat switching is locked during generation.
+- Added a build-generated versioned offline shell service worker, production registration, mobile safe-area/input/streamed-text styling, architecture update, and detailed runtime/device acceptance notes in `docs/LOCAL-AI-CHAT.md`.
+- Validation: `pnpm run build` PASS (strict TypeScript, Vite 7.3.6, 34 modules, offline shell with 6 assets); `pnpm test` PASS (7 tests: model selection/loading deduplication, unsupported browser, load retry, streaming/context reset, cancellation/retry, concurrency, bounded UTF-8 context). Build reports expected large WebLLM runtime chunks (about 6 MB each for worker/main runtime); no build errors.
+- Real Mac in-app-browser production-preview smoke test PASS: actual model download/load, response `7429.`, follow-up `You asked me to remember the number 7429.`, conversation retained across reload. No browser console errors/warnings were reported at model-ready inspection. This was real WebGPU inference, not the fake test runtime.
+- Physical iPhone, Safari/Home Screen behavior, airplane-mode inference, cache survival, background/GPU-loss recovery, peak memory, performance/thermal/battery, and accessibility remain unverified. Automatic device-loss recovery/load cancellation, Swift-state import, and memory editing/model-picker UI are not implemented.
+- Only `web/`, cross-platform docs, and this hand-off changed. Swift/Apple V1 remains intact; no main merge or paid service activation.
+
 ### 2026-10-01 - Codex cross-platform production build
 - Fetched origin and checked out `codex/cross-platform-foundation`, tracking the remote branch; confirmed `395d298` is an ancestor.
 - Read this hand-off and `docs/CROSS-PLATFORM-ARCHITECTURE.md` before changes.
