@@ -1,6 +1,6 @@
 import { request as httpRequest } from 'node:http';
 import { it, expect } from 'vitest';
-import { parseResults, retrieveSearch, validateSearch } from '../scripts/search-service.mjs';
+import { parseResults, retrieveSearch, validateSearch, newsSearchQuery } from '../scripts/search-service.mjs';
 import { makeServer } from '../scripts/server.mjs';
 const request = { query: 'Tulsa news today', kind: 'news', today: true, day: '2026-10-01', timeZone: 'America/Chicago' };
 const now = new Date('2026-10-02T04:30:00Z');
@@ -53,4 +53,19 @@ it('enforces loopback origins, JSON/body limits, search errors and traversal gua
     expect((await fetch(base + '/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'x'.repeat(5000) })).status).toBe(413);
     expect((await fetch(base + '/%2e%2e%2fpackage.json')).status).toBe(403);
   } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+it('normalizes conversational local news queries without response instructions', () => {
+  expect(newsSearchQuery('what happened today in the news in tulsa? give me a short summary and show sources')).toBe('tulsa news');
+  expect(newsSearchQuery('Tulsa news today')).toBe('Tulsa news');
+  expect(newsSearchQuery('What happened today in Oklahoma City? Show sources')).toBe('Oklahoma City news');
+});
+it('retries an empty date-range feed while retaining exact local-day filtering', async () => {
+  const queries = [];
+  const data = await retrieveSearch(request, new AbortController().signal, async url => {
+    queries.push(url.searchParams.get('q'));
+    return new Response(feed(queries.length === 1 ? [] : [item('Recovered news', 'Fri, 02 Oct 2026 03:30:00 GMT'), item('Old news', 'Wed, 30 Sep 2026 12:00:00 GMT', 'https://example.org/old')]));
+  }, now);
+  expect(queries).toHaveLength(2); expect(queries[1]).toBe('Tulsa news when:1d');
+  expect(data.sources).toHaveLength(1); expect(data.sources[0].title).toBe('Recovered news');
 });

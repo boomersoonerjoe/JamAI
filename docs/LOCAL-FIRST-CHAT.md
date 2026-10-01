@@ -36,3 +36,7 @@ The Node service uses portable APIs and the provider contract remains portable. 
 - Mac browser: live news summary/citations visible, saved citations survive reload; header and combined date/time answer correct; ordinary greeting works while both server and Ollama outbound internet are blocked with the sandbox profile; news request in that condition explicitly refuses current facts. Normal retrieval server restored afterward.
 
 Owner acceptance remains: open the preview, ask date/time, ordinary chat and Tulsa news today, follow source links, and try with Wi-Fi disconnected. The agent tested blocked outbound processes without altering the owner's Wi-Fi settings. Broader queries, search relevance and other platforms need acceptance; no full-article synthesis, live-data guarantees, packaging/autostart or mobile retrieval rollout is claimed.
+
+## Conversational-query correction
+
+On 2026-10-01 the owner's full Tulsa question exposed an overconstrained upstream query. News search now strips common question/response scaffolding into topic keywords and tries a second upstream date syntax if the first returns no dated matches. Exact local-day validation is never relaxed. The exact owner query is the opt-in live regression. All 36 tests (including three live tests) and the production build passed after the correction. Ollama selects headlines at temperature zero, with explicit guidance that relevant dated headlines can answer broad news-summary requests. Free public feed reliability is still outside the application's control.

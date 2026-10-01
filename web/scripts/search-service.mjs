@@ -21,6 +21,14 @@ export function validateSearch(input) {
   new Intl.DateTimeFormat('en', { timeZone: input.timeZone });
   return { query: input.query.trim(), kind: input.kind, today: input.today, day: input.day, timeZone: input.timeZone };
 }
+// Feed search expects topic keywords, not response-format instructions.
+export function newsSearchQuery(question) {
+  const topic = question.split(/[?!;]/, 1)[0]
+    .replace(/\b(?:give|show|provide|write|summari[sz]e|tell)\s+(?:me\s+)?(?:a\s+|the\s+)?(?:short\s+|brief\s+)?(?:summary|sources|headlines|news).*$/i, '')
+    .replace(/\b(?:what|happened|happening|happens|is|are|was|were|has|have|the|in|at|on|of|for|and|please|today|tonight|this morning|news|headlines)\b/gi, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return `${topic || 'top'} news`;
+}
 function localDay(iso, timeZone) {
   const p = new Intl.DateTimeFormat('en', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(iso));
   const get = type => p.find(x => x.type === type).value;
@@ -73,17 +81,26 @@ export async function retrieveSearch(input, signal, requestFetch = fetch, now = 
     const before = new Date(`${request.day}T12:00:00Z`); before.setUTCDate(before.getUTCDate() + 2);
     const after = new Date(`${request.day}T12:00:00Z`); after.setUTCDate(after.getUTCDate() - 1);
     const range = request.today ? `after:${after.toISOString().slice(0, 10)} before:${before.toISOString().slice(0, 10)}` : 'when:7d';
-    const query = request.today ? request.query.replace(/\b(today|tonight|this morning)\b/gi, '').trim() : request.query;
+    const query = newsSearchQuery(request.query);
     url = new URL('https://news.google.com/rss/search');
     url.search = new URLSearchParams({ q: `${query} ${range}`, hl: 'en-US', gl: 'US', ceid: 'US:en' }).toString();
   } else {
     url = new URL('https://www.bing.com/search'); url.search = new URLSearchParams({ format: 'rss', q: request.query }).toString();
   }
-  const response = await requestFetch(url, {
+  const fetchSources = async target => {
+  const response = await requestFetch(target, {
     signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]), redirect: 'error',
     headers: { Accept: 'application/rss+xml, application/xml, text/xml', 'User-Agent': 'NhomeAI/0.1 local-first personal search' },
   });
-  const sources = parseResults(await boundedText(response), request, now);
+  return parseResults(await boundedText(response), request, now);
+  };
+  let sources = await fetchSources(url);
+  // A second upstream date syntax can recover indexing gaps, never relax the local-day filter.
+  if (!sources.length && request.kind === 'news' && request.today) {
+    const fallback = new URL(url);
+    fallback.searchParams.set('q', `${newsSearchQuery(request.query)} when:1d`);
+    sources = await fetchSources(fallback);
+  }
   if (!sources.length) throw new Error(request.today && request.kind === 'news' ? `No dated news sources matched ${request.day} in ${request.timeZone}. I cannot verify today's news.` : 'No usable sources were returned. Free search may be temporarily unavailable.');
   // General web results have unknown publication dates. A today-specific answer cannot safely rely on them.
   if (request.today && request.kind === 'web') throw new Error('Web search returned snippets without verified publication dates. I cannot verify a today-specific answer from them. For news, include “news” in your query.');

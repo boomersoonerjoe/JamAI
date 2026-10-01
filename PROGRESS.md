@@ -1,3 +1,11 @@
+# Latest fix: conversational news retrieval, 2026-10-01
+
+- Reproduced the owner's exact query: “what happened today in the news in tulsa? give me a short summary and show sources” returned no dated sources because response instructions and conversational scaffolding were sent verbatim to Google News RSS.
+- Added portable deterministic topic normalization (query becomes “tulsa news”) and a bounded second date-syntax attempt after an empty news feed. Both attempts retain exact device-calendar-day filtering; no older/undated fallback or paid API.
+- Clarified local source selection: dated relevant headlines suffice for broad headline summaries. Ollama source selection now uses temperature zero; generated facts still cannot enter the extractive summary.
+- Validation: 36 automated tests passed, including real exact-query retrieval and local Ollama selection; production build passed. Mac browser exact query returned current dated News On 6, UAB Athletics, Tulsa Flyer and FOX23 links and a short extractive summary. Public feed availability/relevance remains best effort.
+- Changes checkpointed locally on codex/cross-platform-foundation. No push or merge authorized for this fix; none performed.
+
 # Latest checkpoint: 2026-10-01 local-first V1
 
 - Preserved portable PWA/provider/schema architecture and Swift reference; added Date/Intl device context and offline clock answers, optional free fixed-endpoint Google News/Bing RSS retrieval in a loopback Node server, Auto/Always/Off controls, persisted citations, and validated Ollama source selection for exact extractive summaries.
