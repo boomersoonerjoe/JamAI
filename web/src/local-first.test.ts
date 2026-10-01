@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { deviceContext, isDeviceClockQuestion, type DeviceContext } from './device-context';
-import { answerConversation } from './chat-service';
+import { answerConversation, validateGroundedAnswer } from './chat-service';
 import { needsCurrentInformation, searchInternet, type SearchEvidence } from './search';
 import type { ChatProvider, ChatRequest } from './provider';
 import type { Conversation } from './types';
@@ -41,12 +41,12 @@ describe('local-first grounded answers', () => {
     expect(needsCurrentInformation('Help me plan my day today')).toBe(false);
   });
   it('sends only the current query to search, keeps notes/history local and extracts exact evidence', async () => {
-    const s = setup('{"selected":[1],"invented":"A fabricated event happened"}');
+    const s = setup(JSON.stringify({sentences:[{text:'A headline reports a Tulsa library opens a reading room.',source:1,quote:evidence.sources[0].excerpt}],invented:'A fabricated event happened'}));
     const c = conversation('Tulsa news today'); c.messages.unshift({ id: 'old', role: 'assistant', text: 'Private earlier turn', createdAt: '' });
     const result = await answerConversation(c, [{ id: 'secret', text: 'Private memory' }], s.provider, s.options);
     expect(s.search.mock.calls[0][0]).toBe('Tulsa news today');
-    expect(result.text).toContain(evidence.sources[0].excerpt); expect(result.text).not.toContain('fabricated event');
-    expect(s.generate.mock.calls[0][0]).toMatchObject({ responseKind: 'source-selection', evidence });
+    expect(result.text).toContain('A headline reports a Tulsa library opens a reading room.'); expect(result.text).not.toContain('fabricated event');
+    expect(s.generate.mock.calls[0][0]).toMatchObject({ responseKind: 'grounded-answer', evidence });
     expect(s.onUpdate).toHaveBeenCalledTimes(1);
   });
   it('does not ask a model for current facts when search is offline, disabled or empty', async () => {
@@ -60,14 +60,14 @@ describe('local-first grounded answers', () => {
     }
   });
   it('rejects made-up source IDs, malformed summaries and repeated IDs', async () => {
-    for (const reply of ['{"selected":[99]}', 'A made-up news story', '{"selected":[1,1]}']) {
+    for (const reply of ['{"sentences":[{"text":"News","source":99,"quote":"unknown quote"}]}', 'A made-up news story', '{"sentences":[{"text":"News","source":1,"quote":"invented quotation"}]}']) {
       const s = setup(reply); const result = await answerConversation(conversation('Tulsa news today'), [], s.provider, s.options);
       expect(result.text).toContain("couldn't validate"); expect(result.text).not.toContain('made-up news'); expect(result.retryable).toBe(true);
     }
   });
   it('reports insufficient evidence and does not invent an answer', async () => {
-    const s = setup('{"selected":[]}');
-    expect((await answerConversation(conversation('Tulsa news today'), [], s.provider, s.options)).text).toContain("don't verify an answer");
+    const s = setup('{"sentences":[]}');
+    expect((await answerConversation(conversation('Tulsa news today'), [], s.provider, s.options)).text).toContain('enough information');
   });
   it('cancels retrieval without saving an offline-failure answer', async () => {
     const s = setup(); const abort = new AbortController();
@@ -85,4 +85,34 @@ it('can explicitly use general web for news without sending notes or history', a
     const body = JSON.parse((fetcher.mock.calls as unknown as [string, RequestInit][])[0][1].body as string);
     expect(body).toEqual({query:'Tulsa news today',kind:'web',today:true,day:'2026-10-01',timeZone:'America/Chicago'});
   } finally { vi.unstubAllGlobals(); }
+});
+
+it('rejects invented numbers, fake quotes and model-authored links in conversational answers', () => {
+  const source = { ...evidence, scope:'web' as const, sources: [{...evidence.sources[0],excerpt:'Tulsa temperature is 70°F and wind is 5 mph.'}] };
+  const answer = (text: string,quote = source.sources[0].excerpt) => JSON.stringify({sentences:[{text,source:1,quote}]});
+  expect(validateGroundedAnswer(answer('Tulsa is at 70°F.'),source)).toHaveLength(1);
+  expect(() => validateGroundedAnswer(answer('Tulsa is at 95°F.'),source)).toThrow('numerical');
+  expect(() => validateGroundedAnswer(answer('Tulsa is at 70°F.','Tulsa is at 70°F.'),source)).toThrow();
+  expect(() => validateGroundedAnswer(answer('Visit https://fake.example'),source)).toThrow();
+});
+
+it('does not turn scheduled news into completed events or add unsupported names', () => {
+  const e = {...evidence,sources:[{...evidence.sources[0],title:'Charlotte Travels to Tulsa for Friday Match',excerpt:'Charlotte Travels to Tulsa for Friday Match'}]};
+  const answer = (text:string) => JSON.stringify({sentences:[{text,source:1,quote:e.sources[0].excerpt}]});
+  expect(validateGroundedAnswer(answer('A headline covers Charlotte traveling to Tulsa for a Friday match.'),e)).toHaveLength(1);
+  expect(() => validateGroundedAnswer(answer('A headline reports Charlotte traveled to Tulsa today.'),e)).toThrow();
+  expect(() => validateGroundedAnswer(answer('A headline mentions Donald Trump.'),e)).toThrow();
+});
+
+it('corrects a citation only when its exact quote uniquely matches another retrieved source', () => {
+  const e = {...evidence,scope:'web' as const,sources:[{...evidence.sources[0],excerpt:'Tulsa temperature is 70°F.'},{...evidence.sources[0],excerpt:'Oklahoma City temperature is 71°F.'}]};
+  const raw = JSON.stringify({sentences:[{text:'Oklahoma City is at 71°F.',source:1,quote:e.sources[1].excerpt}]});
+  expect(validateGroundedAnswer(raw,e)[0].source).toBe(2);
+  expect(() => validateGroundedAnswer(raw,{...e,sources:[e.sources[0],e.sources[1],e.sources[1]]})).toThrow('quote');
+});
+
+it('retains a supported sentence while discarding an unsupported companion after repair', async () => {
+  const s = setup(JSON.stringify({sentences:[{text:'A headline reports a Tulsa library opens a reading room.',source:1,quote:evidence.sources[0].excerpt},{text:'A headline reports Donald Trump arrived today.',source:1,quote:evidence.sources[0].excerpt}]}));
+  const result = await answerConversation(conversation('Tulsa news today'),[],s.provider,s.options);
+  expect(result.retryable).toBe(false); expect(result.text).toContain('reading room'); expect(result.text).not.toContain('Donald'); expect(s.generate).toHaveBeenCalledTimes(2);
 });

@@ -36,23 +36,71 @@ export async function answerConversation(conversation: Conversation, memories: M
   }
   options.onActivity(evidence ? 'Local AI is summarizing retrieved sources…' : 'Local AI is replying…');
   if (evidence) {
-    // Current facts are extractive: the model ranks excerpts, never authors new factual prose.
-    // Do not publish model output until the source identifiers have passed validation.
-    const raw = await provider.generate({ prompt, device: clock, evidence, responseKind: 'source-selection' }, () => {}, options.signal);
+    // Stage the grounded prose until all supporting quotes/citations have passed validation.
+    let raw = await provider.generate({ prompt, device: clock, evidence, responseKind: 'grounded-answer' }, () => {}, options.signal);
     options.signal.throwIfAborted();
-    let selected: number[];
-    try {
-      const data = JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')) as { selected?: unknown };
-      if (!Array.isArray(data.selected) || data.selected.length > 4 || data.selected.some(n => !Number.isInteger(n) || n < 1 || n > evidence!.sources.length) || new Set(data.selected).size !== data.selected.length) throw new Error('Invalid source selection.');
-      selected = data.selected;
-    } catch {
-      const text = "Sources were retrieved, but I couldn't validate the local AI's summary. I won't present unverified current facts. Open the sources or retrieved excerpts below, or retry.";
-      options.onUpdate(text, evidence); return { text, evidence, retryable: true };
+    let sentences: {text: string; source: number; quote: string}[];
+    try { sentences = validateGroundedAnswer(raw, evidence); }
+    catch (firstError) {
+      options.signal.throwIfAborted();
+      raw = await provider.generate({prompt: `${prompt}\nYour previous draft did not pass evidence validation: ${firstError instanceof Error ? firstError.message : 'unsupported quote'}. Repair the answer. Keep it short; copy source wording closely and add no missing details.`,device:clock,evidence,responseKind:'grounded-answer'},()=>{},options.signal);
+      options.signal.throwIfAborted();
+      try { sentences = validateGroundedAnswer(raw,evidence); } catch {
+        // Retain individually supported sentences; a bad companion must never be published.
+        sentences = [];
+        try {
+          const draft = JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, ''));
+          if (Array.isArray(draft.sentences) && draft.sentences.length <= 3) {
+            for (const sentence of draft.sentences) {
+              try { sentences.push(...validateGroundedAnswer(JSON.stringify({sentences:[sentence]}),evidence)); } catch { /* Discard unsupported prose. */ }
+            }
+          }
+        } catch { /* Invalid JSON has no supported sentences. */ }
+        if (!sentences.length) {
+          const text = "I found sources, but couldn't validate a supported summary. I won't present unverified details. You can inspect the sources below or retry.";
+          options.onUpdate(text, evidence); return { text, evidence, retryable: true };
+        }
+      }
     }
-    const scope = evidence.scope === 'today' ? `News published on ${clock.localDate} in ${clock.timeZone}` : evidence.scope === 'weather' ? 'Current weather model estimate' : 'Retrieved search excerpts';
-    const text = selected.length ? `${scope} — an extractive summary selected by local AI:\n${selected.map(n => `• “${evidence!.sources[n - 1].excerpt}” [${n}]`).join('\n')}\n\n${evidence.scope === 'weather' ? 'Source: Open-Meteo. Model estimate, not a station observation; resolved location and data time are shown above.' : 'These are source headlines/snippets, not full articles or complete coverage.'}${evidence.scope === 'web' ? ' Their publication dates and current accuracy are not verified.' : ''}` : "The retrieved excerpts don't verify an answer to your question. I won't guess. See the sources below.";
+    const caveat = evidence.scope === 'weather' ? 'This is a weather-model estimate, not a station observation. The resolved place and data time are in the retrieved evidence.' : evidence.scope === 'web' ? 'These search snippets may be incomplete or outdated; current prices, availability and publication dates are not independently verified.' : `This is based on retrieved headlines${evidence.scope === 'today' ? ` published on ${clock.localDate} in ${clock.timeZone}` : ''}, not full articles or complete coverage.`;
+    const text = sentences.length ? `${sentences.map(s => `${s.text} [${s.source}]`).join(' ')}\n\n${caveat}` : "I found sources, but they don't contain enough information to answer that question reliably. I won't guess; the source links are below.";
     options.onUpdate(text, evidence); return { text, evidence, retryable: false };
+
   }
   const text = await provider.generate({ prompt, device: clock }, text => options.onUpdate(text), options.signal);
   return { text, retryable: false };
+}
+
+export function validateGroundedAnswer(raw: string, evidence: SearchEvidence): {text: string; source: number; quote: string}[] {
+  const data = JSON.parse(raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')) as {sentences?: unknown};
+  if (!Array.isArray(data.sentences) || data.sentences.length > 3) throw new Error('Invalid answer shape');
+  return data.sentences.map(s => {
+    if (!s || typeof s.text !== 'string' || !s.text.trim() || s.text.length > 700 || /https?:|\[\d+\]/i.test(s.text) || !Number.isInteger(s.source) || s.source < 1 || s.source > evidence.sources.length || typeof s.quote !== 'string' || s.quote.trim().length < 12) throw new Error('Unsupported source or quote');
+    let sourceNumber = s.source;
+    if (!evidence.sources[sourceNumber-1].excerpt.includes(s.quote)) {
+      const matches = evidence.sources.flatMap((source,index) => source.excerpt.includes(s.quote) ? [index+1] : []);
+      if (matches.length !== 1) throw new Error('Unsupported source quote');
+      sourceNumber = matches[0];
+    }
+    if (evidence.scope === 'today' || evidence.scope === 'recent') {
+      const connectors = new Set('a an the headline headlines mentions covers reports that this is are as in on at of for to and or with from its his her their it has have had into about according says report mention covering reporting mentioned reported'.split(' '));
+      const quoteWords: string[] = s.quote.toLowerCase().match(/[a-z]+/g) || [];
+      for (const word of s.text.toLowerCase().match(/[a-z]+/g) || []) {
+        if (!connectors.has(word) && !quoteWords.includes(word) && !(word.length >= 4 && quoteWords.some(w => w.length >= 4 && w.slice(0,4) === word.slice(0,4)))) throw new Error(`Unsupported news wording: ${word}`);
+      }
+      if (!/headline/i.test(s.text)) throw new Error('Missing headline attribution');
+      for (const word of s.text.match(/\b(?:held|traveled|occurred|happened|opened|announced|yesterday|today|tonight)\b/gi) || []) {
+        if (!s.quote.toLowerCase().includes(word.toLowerCase())) throw new Error('Unsupported event tense or timing');
+      }
+    }
+    const allowedFraming = new Set(['The','A','I','This','These','Those','According','One','Here','It','For','From','In','There','However','Based','Retrieved','Current','Search','While','Although']);
+    const support = `${s.quote} ${evidence.sources[sourceNumber-1].title} ${evidence.sources[sourceNumber-1].publisher || ''}`.toLowerCase();
+    for (const name of s.text.match(/\b[A-Z][a-z]+(?:[A-Z][a-z]+)*\b/g) || []) {
+      if (!allowedFraming.has(name) && !support.includes(name.toLowerCase())) throw new Error('Unsupported name');
+    }
+    const numbers: string[] = s.text.match(/-?\d+(?:\.\d+)?/g) || [];
+    const supported: string[] = s.quote.match(/-?\d+(?:\.\d+)?/g) || [];
+    if (numbers.some(n => !supported.includes(n))) throw new Error('Unsupported numerical claim');
+    return {text:s.text.trim(),source:sourceNumber,quote:s.quote};
+  });
 }

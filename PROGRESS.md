@@ -1,3 +1,10 @@
+# Latest checkpoint: conversational retrieved answers, 2026-10-01
+
+- Local Qwen/Ollama now writes short cited conversational prose instead of only exact extractive lists. Structured sentences include exact supporting quotes; the app checks citations, quotes, numbers, names and conservative news wording/tense before publishing. One repair attempt is allowed; individually unsupported sentences are discarded when supported ones remain. Unique quote matches correct citation misnumbering; ambiguous matches fail closed. Semantic screening is conservative, not a formal no-hallucination guarantee.
+- Mac: 60 checks passed (46 unit/HTTP, 12 live retrieval questions, 2 real local-inference/recall/Stop tests); TypeScript/Vite production build passed. Weather covered Tulsa Fahrenheit/Celsius, Oklahoma City and Waxahachie with correct locations. Dated news covered exact full Tulsa question, Oklahoma City and US news. Product searches covered MacBook Air, budget laptops and iPhone, explaining absent prices/comparisons instead of fabricating them. Two broader web research questions lacked substantive snippets and were honestly declined. See docs/LIVE-CHAT-VALIDATION.md for outcomes and limitations.
+- Mac UI verified natural Tulsa/Celsius weather prose, cited iPhone response and the exact full Tulsa news summary with dated sources. Qwen3.5 4B Q4_K_M / Ollama 0.35.0, free retrieval, offline ordinary chat/device clock, portable provider/schema foundation remain. Other-platform acceptance and deeper page/article retrieval remain pending.
+- Work remains local on codex/cross-platform-foundation. Do not push or merge.
+
 # Latest fix: weather query/location preservation, 2026-10-01
 
 - Removed broad web-query command stripping/adjective reordering. Primary web queries preserve the trimmed original text. Bounded retries add a subject prefix and remove only leading question scaffolding; location spelling, qualifiers, units and other details remain. Named subject checks retain product/research relevance.

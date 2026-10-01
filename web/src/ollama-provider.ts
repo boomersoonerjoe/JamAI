@@ -44,14 +44,13 @@ export class OllamaChatProvider implements ChatProvider {
       const response = await this.request(`${ENDPOINT}/api/chat`, {
         method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: MAC_MODEL, stream: true, think: false, keep_alive: '2m',
-          ...(request.responseKind === 'source-selection' ? { format: {
-            type: 'object', properties: { selected: { type: 'array', items: { type: 'integer' }, maxItems: 4 } },
-            required: ['selected'], additionalProperties: false,
+          ...(request.responseKind ? { format: {
+            ...(request.responseKind === 'grounded-answer' ? { type: 'object', properties: { sentences: { type: 'array', maxItems: 3, items: { type: 'object', properties: { text: { type: 'string' }, source: { type: 'integer' }, quote: { type: 'string' } }, required: ['text','source','quote'], additionalProperties: false } } }, required: ['sentences'], additionalProperties: false } : { type: 'object', properties: { selected: { type: 'array', items: { type: 'integer' }, maxItems: 4 } }, required: ['selected'], additionalProperties: false }),
           } } : {}),
           messages: [
             { role: 'system', content: systemInstructions(request) },
             { role: 'user', content: inferencePrompt(request) },
-          ], options: { num_ctx: 4096, num_predict: 512, temperature: request.responseKind === 'source-selection' ? 0 : 0.6 } }),
+          ], options: { num_ctx: 4096, num_predict: 512, temperature: request.responseKind ? 0 : 0.6 } }),
       });
       if (!response.ok) throw new Error(`Local Ollama returned HTTP ${response.status}. Check that the model is installed.`);
       if (!response.body) throw new Error('Ollama returned no response stream.');
