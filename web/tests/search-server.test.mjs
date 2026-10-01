@@ -1,6 +1,6 @@
 import { request as httpRequest } from 'node:http';
 import { it, expect } from 'vitest';
-import { parseResults, retrieveSearch, validateSearch, newsSearchQuery } from '../scripts/search-service.mjs';
+import { parseResults, retrieveSearch, validateSearch, newsSearchQuery, parseWebHTML, retrieveWeb, webSearchQuery } from '../scripts/search-service.mjs';
 import { makeServer } from '../scripts/server.mjs';
 const request = { query: 'Tulsa news today', kind: 'news', today: true, day: '2026-10-01', timeZone: 'America/Chicago' };
 const now = new Date('2026-10-02T04:30:00Z');
@@ -29,7 +29,8 @@ it('uses fixed free endpoints and broadens upstream dates before exact timezone 
 });
 it('fails closed for undated today-specific web results, bad responses and oversized feeds', async () => {
   const signal = new AbortController().signal;
-  await expect(retrieveSearch({ ...request, kind: 'web' }, signal, async () => new Response(feed([item('Web title', '')])), now)).rejects.toThrow('publication dates');
+  const web = await retrieveSearch({ ...request, kind: 'web' }, signal, async () => new Response(feed([item('Web title', '')])), now);
+  expect(web.scope).toBe('web'); expect(web.sources[0]).not.toHaveProperty('publishedAt');
   await expect(retrieveSearch(request, signal, async () => new Response('Blocked', { status: 429 }), now)).rejects.toThrow('429');
   await expect(retrieveSearch(request, signal, async () => new Response('x'.repeat(1024 * 1024 + 1)), now)).rejects.toThrow('size limit');
 });
@@ -68,4 +69,32 @@ it('retries an empty date-range feed while retaining exact local-day filtering',
   }, now);
   expect(queries).toHaveLength(2); expect(queries[1]).toBe('Tulsa news when:1d');
   expect(data.sources).toHaveLength(1); expect(data.sources[0].title).toBe('Recovered news');
+});
+
+it('extracts organic HTML results and decodes Bing links without promoting search dates', () => {
+  const u = 'a1' + Buffer.from('https://example.org/product').toString('base64url');
+  const html = `<li class="b_algo"><h2><a href="https://www.bing.com/ck/a?u=${u}">Product</a></h2><div class="b_caption"><p><span class="news_dt">today</span>Listed price $10</p></div></li>`;
+  expect(parseWebHTML(html, 'bing')).toEqual([{title:'Product', url:'https://example.org/product', excerpt:'Listed price $10', publisher:'example.org'}]);
+  expect(parseWebHTML(html.replace(u, 'a1'+Buffer.from('http://127.0.0.1/private').toString('base64url')), 'bing')).toEqual([]);
+  expect(parseWebHTML('<h2>Challenge</h2>', 'bing')).toEqual([]);
+});
+it('falls back to a second free HTML engine, preserving query privacy and cancellation', async () => {
+  const calls = [];
+  const result = await retrieveWeb({...request, kind:'web'}, new AbortController().signal, async url => {
+    calls.push(url.hostname);
+    return new Response(calls.length === 1 ? 'Unavailable' : '<li class="b_algo"><h2><a href="https://example.org/research">Research</a></h2><div class="b_caption"><p>Sourced excerpt</p></div></li>');
+  }, now);
+  expect(calls).toEqual(['search.brave.com','www.bing.com']); expect(result.provider).toBe('Bing web search');
+  const abort = new AbortController(); abort.abort();
+  await expect(retrieveWeb(request,abort.signal)).rejects.toMatchObject({name:'AbortError'});
+});
+
+it('normalizes research and comparison commands into subject-first search queries', () => {
+  expect(webSearchQuery('Research solar panel efficiency')).toBe('solar panel efficiency');
+  expect(webSearchQuery('Compare latest budget laptops')).toBe('laptops latest budget');
+});
+it('fails explicitly when all public engines are unavailable and ignores arbitrary upstream parameters', async () => {
+  const calls = [];
+  await expect(retrieveWeb({...request, kind:'web', url:'http://127.0.0.1/private'},new AbortController().signal,async url => { calls.push(url.hostname); return new Response('Unavailable',{status:429}); },now)).rejects.toThrow('unavailable');
+  expect(calls).toEqual(['search.brave.com','www.bing.com','www.bing.com']);
 });

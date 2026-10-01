@@ -20,11 +20,11 @@ export async function answerConversation(conversation: Conversation, memories: M
   }
   const current = needsCurrentInformation(question);
   let evidence: SearchEvidence | undefined;
-  if (current || options.mode === 'always') {
+  if (current || options.mode === 'always' || options.mode === 'web') {
     try {
       if (options.mode === 'off') throw new Error('Internet search is turned off.');
       options.onActivity('Searching free internet sources…');
-      evidence = await (options.search ?? searchInternet)(question, clock, options.signal);
+      evidence = await (options.search ?? searchInternet)(question, clock, options.signal, options.mode === 'web' ? 'web' : undefined);
       options.signal.throwIfAborted();
       if (!evidence.sources.length) throw new Error('No usable sources were retrieved.');
     } catch (error) {

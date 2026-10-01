@@ -30,7 +30,7 @@ function App() {
   const [activity, setActivity] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>(() => {
     const saved = localStorage.getItem('nhomeai.search-mode.v1');
-    return saved === 'off' || saved === 'always' ? saved : 'auto';
+    return saved === 'off' || saved === 'always' || saved === 'web' ? saved : 'auto';
   });
   const controller = useRef<AbortController | null>(null);
   const [providerID, setProviderID] = useState(() => /Macintosh|Windows|X11|Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent) && !(/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ? 'ollama' : 'webllm');
@@ -99,8 +99,8 @@ function App() {
     <section className="search-settings">
       <label>Internet search <select aria-label="Internet search" disabled={busy} value={searchMode} onChange={e => {
         const next = e.target.value as SearchMode; localStorage.setItem('nhomeai.search-mode.v1', next); setSearchMode(next);
-      }}><option value="auto">Auto · current-information questions</option><option value="always">Always search</option><option value="off">Off · offline only</option></select></label>
-      <p>Free search sends this message’s search query to search sites. Saved notes and other chat turns stay local. AI processing stays on your device. Search can fail or be incomplete; current facts require retrieved evidence.</p>
+      }}><option value="auto">Auto · current-information questions</option><option value="always">Always · automatic sources</option><option value="web">Always · general web</option><option value="off">Off · offline only</option></select></label>
+      <p>Free search sends this message’s search query to free web search sites (Bing/Brave) or news RSS. Saved notes and other chat turns stay local. AI processing stays on your device. Search can fail or be incomplete; current facts require retrieved evidence.</p>
       {activity && <div role="status" aria-live="polite">{activity}</div>}
     </section>
     <section className="layout"><aside>

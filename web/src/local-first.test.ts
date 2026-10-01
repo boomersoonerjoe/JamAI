@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { deviceContext, isDeviceClockQuestion, type DeviceContext } from './device-context';
 import { answerConversation } from './chat-service';
-import { needsCurrentInformation, type SearchEvidence } from './search';
+import { needsCurrentInformation, searchInternet, type SearchEvidence } from './search';
 import type { ChatProvider, ChatRequest } from './provider';
 import type { Conversation } from './types';
 const clock = () => deviceContext(new Date('2026-10-01T21:00:00Z'), 'America/Chicago');
@@ -37,7 +37,7 @@ describe('local-first grounded answers', () => {
     expect(s.search).not.toHaveBeenCalled(); expect(s.generate.mock.calls[0][0]).toMatchObject({ device: clock() });
   });
   it('routes current questions while preserving normal personal conversation', () => {
-    for (const q of ['Tulsa news today', 'Latest Firefox version', 'Who is the mayor of Tulsa?', 'Weather in Tulsa tomorrow', 'Search for hiking trails']) expect(needsCurrentInformation(q)).toBe(true);
+    for (const q of ['Tulsa news today', 'Latest Firefox version', 'Who is the mayor of Tulsa?', 'Weather in Tulsa tomorrow', 'Search for hiking trails', 'Research solar panel efficiency', 'Compare latest budget laptops', 'MacBook Air current price', 'Current events in Oklahoma']) expect(needsCurrentInformation(q)).toBe(true);
     expect(needsCurrentInformation('Help me plan my day today')).toBe(false);
   });
   it('sends only the current query to search, keeps notes/history local and extracts exact evidence', async () => {
@@ -75,4 +75,14 @@ describe('local-first grounded answers', () => {
     await expect(answerConversation(conversation('Tulsa news today'), [], s.provider, { ...s.options, signal: abort.signal })).rejects.toMatchObject({ name: 'AbortError' });
     expect(s.onUpdate).not.toHaveBeenCalled(); expect(s.generate).not.toHaveBeenCalled();
   });
+});
+
+it('can explicitly use general web for news without sending notes or history', async () => {
+  const fetcher = vi.fn(async () => new Response(JSON.stringify(evidence)));
+  vi.stubGlobal('fetch', fetcher);
+  try {
+    await searchInternet('Tulsa news today',clock(),new AbortController().signal,'web');
+    const body = JSON.parse((fetcher.mock.calls as unknown as [string, RequestInit][])[0][1].body as string);
+    expect(body).toEqual({query:'Tulsa news today',kind:'web',today:true,day:'2026-10-01',timeZone:'America/Chicago'});
+  } finally { vi.unstubAllGlobals(); }
 });

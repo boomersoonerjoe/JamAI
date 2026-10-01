@@ -59,6 +59,61 @@ export function parseResults(xml, request, now = new Date()) {
   });
   return sources.slice(0, 4);
 }
+export function webSearchQuery(question) {
+  const cleaned = question.replace(/^(?:please\s+)?(?:research|compare|search (?:for)?|look up|find (?:me)?)(?:\s+)/i, '').replace(/\s*[?;]\s*(?:give|show|provide|summari[sz]e).*$/i, '').replace(/\b(?:give me a (?:short|brief) summary|show sources)\b/gi, '').trim();
+  // Put the subject before generic recency/price adjectives; some engines over-weight the first word.
+  const words = cleaned.split(/\s+/);
+  const modifiers = /^(?:latest|current|recent|best|budget|cheap|affordable)$/i;
+  return [...words.filter(w => !modifiers.test(w)), ...words.filter(w => modifiers.test(w))].join(' ');
+}
+export function parseWebHTML(html, engine) {
+  const $ = load(html), sources = [], seen = new Set();
+  // Parse only organic result containers, never ads, answer boxes or AI-generated search prose.
+  const selector = engine === 'bing' ? '.b_algo' : '.snippet';
+  $(selector).each((_, node) => {
+    const item = $(node);
+    const anchor = engine === 'bing' ? item.find('h2 a').first() : item.find('a').filter((_, a) => $(a).find('.search-snippet-title').length > 0).first();
+    let href = anchor.attr('href');
+    if (!href) return;
+    try {
+      const target = new URL(href);
+      if (target.hostname === 'www.bing.com' && target.pathname === '/ck/a') {
+        const encoded = target.searchParams.get('u');
+        if (!encoded?.startsWith('a1')) return;
+        href = Buffer.from(encoded.slice(2), 'base64url').toString('utf8');
+      }
+    } catch { return; }
+    const url = publicLink(href);
+    if (!url || seen.has(url) || /^(?:www\.)?(?:bing\.com|search\.brave\.com)$/.test(new URL(url).hostname)) return;
+    const title = clip(engine === 'bing' ? anchor.text() : anchor.find('.search-snippet-title').text(), 200);
+    const caption = engine === 'bing' ? item.find('.b_caption p').first() : item.find('.generic-snippet .content').first();
+    caption.find('.news_dt').remove();
+    const excerpt = clip(caption.text(), 320);
+    if (!title || !excerpt) return;
+    seen.add(url); sources.push({ title, url, excerpt, publisher: new URL(url).hostname });
+  });
+  return sources.slice(0, 4);
+}
+export async function retrieveWeb(request, signal, requestFetch = fetch, now = new Date()) {
+  const query = webSearchQuery(request.query);
+  const endpoints = [
+    ['brave', 'Brave web search', `https://search.brave.com/search?${new URLSearchParams({q: query, source: 'web'})}`],
+    ['bing', 'Bing web search', `https://www.bing.com/search?${new URLSearchParams({q: query})}`],
+    ['rss', 'Bing web-search RSS fallback', `https://www.bing.com/search?${new URLSearchParams({q: query, format: 'rss'})}`],
+  ];
+  const combined = AbortSignal.any([signal, AbortSignal.timeout(25000)]);
+  for (const [engine, provider, url] of endpoints) {
+    combined.throwIfAborted();
+    try {
+      const response = await requestFetch(new URL(url), { signal: AbortSignal.any([combined, AbortSignal.timeout(8000)]), redirect: 'error', headers: { Accept: 'text/html,application/rss+xml', 'User-Agent': 'NhomeAI/0.1 local-first personal search' } });
+      const text = await boundedText(response);
+      const sources = engine === 'rss' ? parseResults(text, request, now) : parseWebHTML(text, engine);
+      if (sources.length) return { query: request.query, provider, fetchedAt: now.toISOString(), timeZone: request.timeZone, scope: 'web', sources };
+      // Empty/challenge pages are treated as unavailable; never solve or bypass challenges.
+    } catch { combined.throwIfAborted(); }
+  }
+  throw new Error('Free general web search is unavailable or returned no usable results. I cannot verify this question.');
+}
 async function boundedText(response) {
   if (!response.ok) throw new Error(`Free search returned HTTP ${response.status}.`);
   if (!response.body) throw new Error('Search returned an empty response.');
@@ -74,6 +129,7 @@ async function boundedText(response) {
 }
 export async function retrieveSearch(input, signal, requestFetch = fetch, now = new Date()) {
   const request = validateSearch(input);
+  if (request.kind === 'web') return retrieveWeb(request, signal, requestFetch, now);
   let url;
   if (request.kind === 'news') {
     // Expand the upstream date window, then filter exact local-day pubDates below.
@@ -84,8 +140,6 @@ export async function retrieveSearch(input, signal, requestFetch = fetch, now = 
     const query = newsSearchQuery(request.query);
     url = new URL('https://news.google.com/rss/search');
     url.search = new URLSearchParams({ q: `${query} ${range}`, hl: 'en-US', gl: 'US', ceid: 'US:en' }).toString();
-  } else {
-    url = new URL('https://www.bing.com/search'); url.search = new URLSearchParams({ format: 'rss', q: request.query }).toString();
   }
   const fetchSources = async target => {
   const response = await requestFetch(target, {
@@ -102,8 +156,6 @@ export async function retrieveSearch(input, signal, requestFetch = fetch, now = 
     sources = await fetchSources(fallback);
   }
   if (!sources.length) throw new Error(request.today && request.kind === 'news' ? `No dated news sources matched ${request.day} in ${request.timeZone}. I cannot verify today's news.` : 'No usable sources were returned. Free search may be temporarily unavailable.');
-  // General web results have unknown publication dates. A today-specific answer cannot safely rely on them.
-  if (request.today && request.kind === 'web') throw new Error('Web search returned snippets without verified publication dates. I cannot verify a today-specific answer from them. For news, include “news” in your query.');
   return {
     query: request.query, provider: request.kind === 'news' ? 'Google News RSS' : 'Bing web-search RSS',
     fetchedAt: now.toISOString(), timeZone: request.timeZone,

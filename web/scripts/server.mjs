@@ -53,5 +53,5 @@ export function makeServer(search = retrieveSearch) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const server = makeServer();
   server.on('error', error => { console.error(error.message); process.exitCode = 1; });
-  server.listen(4173, '127.0.0.1', () => console.log('NhomeAI local-first: http://127.0.0.1:4173 (AI stays local; search uses free public RSS)'));
+  server.listen(4173, '127.0.0.1', () => console.log('NhomeAI local-first: http://127.0.0.1:4173 (AI stays local; search uses free public web results and news RSS)'));
 }

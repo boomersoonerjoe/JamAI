@@ -1,3 +1,11 @@
+# Latest milestone: general web search, 2026-10-01
+
+- Expanded retrieval beyond RSS with free Brave/Bing organic HTML search, Bing RSS fallback, bounded fetch/parse/cancellation, safe decoded links and exact excerpts. No keys, paid API, extra dependency or cloud inference. Qwen/Ollama unchanged.
+- Expanded automatic intent routing for weather/products/prices/current events/research/comparison and added Always · general web override, including news. RSS remains the automatic news source. Device clock and ordinary offline chat preserved.
+- Production build passed; 38 unit/HTTP plus 8 live tests passed. Mac live tests verified sources/local selection for all requested categories and retained news/streaming/recall/Stop/retry. UI verified automatic HTML search; blocked outbound networking verified explicit search refusal and ordinary local greeting. Online server restored.
+- Free engine access/relevance is best effort. Brave was rate-limited to Node; Bing fallback worked. No challenge bypass. Web snippets have unknown publication dates; exact live weather/prices and full-page comparisons are not claimed. See docs/LOCAL-FIRST-CHAT.md for precise limitations and privacy.
+- Checkpointed locally on codex/cross-platform-foundation; no push or merge. Other-platform acceptance and owner tests remain.
+
 # Latest fix: conversational news retrieval, 2026-10-01
 
 - Reproduced the owner's exact query: “what happened today in the news in tulsa? give me a short summary and show sources” returned no dated sources because response instructions and conversational scaffolding were sent verbatim to Google News RSS.
