@@ -1,3 +1,4 @@
+import { systemInstructions, inferencePrompt } from './inference-context';
 import type { ChatProvider, ChatRequest, ProviderStatus } from './provider';
 import type { WebWorkerMLCEngine } from '@mlc-ai/web-llm';
 
@@ -74,8 +75,8 @@ export class LocalChatProvider implements ChatProvider {
       signal.throwIfAborted();
       const chunks = await engine.chat.completions.create({
         messages: [
-          { role: 'system', content: 'You are NhomeAI, a helpful private assistant. Be concise and honest.' },
-          { role: 'user', content: request.prompt },
+          { role: 'system', content: systemInstructions(request) },
+          { role: 'user', content: inferencePrompt(request) },
         ], stream: true, max_tokens: 256, temperature: 0.6,
       });
       let text = '';

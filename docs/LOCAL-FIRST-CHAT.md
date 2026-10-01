@@ -1,0 +1,38 @@
+# NhomeAI V1 local-first chat
+
+The portable React/TypeScript PWA, schema-v1 local storage and provider-neutral ChatProvider remain the foundation. The new chat-service orchestrates device context, optional retrieval and local inference. Existing Swift reference code is unchanged.
+
+## Behavior and privacy
+
+- Device date, time, weekday, UTC offset and IANA time zone come from Date/Intl, refreshed per request. The header ticks independently. Direct clock questions work without internet or a loaded model. Accuracy depends on the device clock.
+- Ordinary conversation runs locally, using Ollama on desktop or the retained WebLLM browser adapter. No cloud AI fallback.
+- Auto search recognizes common current-information wording, including “Tulsa news today.” Always search handles other wording; Off disables retrieval. Auto is a heuristic, not comprehensive intent detection. Unrecognized changing-fact questions receive a model instruction to decline unsupported current claims; that instruction alone cannot guarantee model compliance.
+- A loopback Node server retrieves free Google News RSS for news and Bing RSS for general web search. No account, API key or paid API. These public endpoints are best effort and may change, block requests, return irrelevant results or omit coverage. No challenge bypass, full article scraping or arbitrary URL fetching.
+- Only the current question is used as the external query. Saved notes/history remain local. Search sites see the query, normal network metadata and, for news, a derived calendar date range. No GPS/location permission. Opening a source link makes an ordinary third-party browser visit.
+- Current answers are extractive: local Ollama selects/ranks source IDs; the app validates IDs and publishes exact retrieved headlines/snippets with numbered source links. Generated factual prose is never published in this path. This prevents model-added current facts, but cannot guarantee a publisher's accuracy. Extra model prose and fabricated source IDs are rejected.
+- Today-news results require publication metadata matching the device's exact calendar day/time zone; future and undated entries are discarded. News publication metadata is supplied by the feed, not independently audited. General web snippets have unknown publication dates and are labeled accordingly; today-specific web questions fail closed. Weather, prices and other live data are not guaranteed by general search snippets.
+- Missing connectivity, sources or valid selection produces an explicit refusal rather than a guessed current answer. Previously saved citations retain their retrieval timestamp; they are not refreshed or represented as today's new evidence. Sources persist additively within schema-v1 messages.
+
+## Run on the Mac
+
+The existing installed runtime is Ollama 0.35.0 with Qwen3.5 4B Q4_K_M (`qwen3.5:4b-q4_K_M`). Model processing stays on the Mac. In separate terminals from the repository:
+
+```sh
+./scripts/start-local-ai.sh
+./scripts/start-mac-chat.sh
+```
+
+Open http://127.0.0.1:4173 and connect local Ollama. The second script now runs the retrieval/static server, replacing Vite preview. Model weights/runtime are ignored local files, not part of Git. See MAC-LOCAL-AI.md for initial setup. No additional model download is needed on this Mac.
+
+For a rebuild, use Node 22+ and pnpm in web/: `pnpm install`, `pnpm test`, `pnpm run build`, `pnpm start`. Vite development at port 5173 proxies /api/search to the separately running server on 4173. A static-only host or Vite preview alone cannot provide online search.
+
+The Node service uses portable APIs and the provider contract remains portable. Launch scripts and outbound-blocking test profile are Mac-specific conveniences. Windows/Linux launch instructions, mobile retrieval deployment and physical mobile acceptance remain future work. The server binds loopback only; it is not exposed to phones/LAN. Native browser inference and cached offline chat remain available where WebGPU/model assets are supported.
+
+## Mac validation, 2026-10-01
+
+- Production TypeScript/Vite build passed (39 modules; existing large WebLLM bundle advisory).
+- 31 unit/HTTP tests passed, including clock/DST/calendar boundaries, privacy, exact extraction, malformed/fabricated source selections, offline refusals, cancellation, safe links, bounded feeds, origin/host/body validation and static traversal protection.
+- Three opt-in real tests passed: live dated Tulsa news retrieved through the server and summarized through installed Ollama; streaming and app-owned recall of 7429; Stop and successful fresh request.
+- Mac browser: live news summary/citations visible, saved citations survive reload; header and combined date/time answer correct; ordinary greeting works while both server and Ollama outbound internet are blocked with the sandbox profile; news request in that condition explicitly refuses current facts. Normal retrieval server restored afterward.
+
+Owner acceptance remains: open the preview, ask date/time, ordinary chat and Tulsa news today, follow source links, and try with Wi-Fi disconnected. The agent tested blocked outbound processes without altering the owner's Wi-Fi settings. Broader queries, search relevance and other platforms need acceptance; no full-article synthesis, live-data guarantees, packaging/autostart or mobile retrieval rollout is claimed.

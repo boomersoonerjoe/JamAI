@@ -1,4 +1,6 @@
-export interface ChatRequest { prompt: string }
+import type { DeviceContext } from './device-context';
+import type { SearchEvidence } from './search';
+export interface ChatRequest { prompt: string; device?: DeviceContext; evidence?: SearchEvidence; responseKind?: 'source-selection' }
 export interface ProviderStatus {
   phase: 'idle' | 'loading' | 'ready' | 'error';
   message: string;

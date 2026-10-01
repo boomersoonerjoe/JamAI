@@ -11,4 +11,4 @@ if [[ ! -f node_modules/vite/bin/vite.js || ! -f dist/index.html ]]; then
   print -u2 'Build the web client first; see docs/MAC-LOCAL-AI.md.'
   exit 1
 fi
-exec node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4173 --strictPort
+exec node scripts/server.mjs

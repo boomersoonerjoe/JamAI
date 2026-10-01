@@ -1,3 +1,11 @@
+# Latest checkpoint: 2026-10-01 local-first V1
+
+- Preserved portable PWA/provider/schema architecture and Swift reference; added Date/Intl device context and offline clock answers, optional free fixed-endpoint Google News/Bing RSS retrieval in a loopback Node server, Auto/Always/Off controls, persisted citations, and validated Ollama source selection for exact extractive summaries.
+- Current retrieval failures refuse rather than fabricate. Auto intent detection is heuristic; general snippets are not verified live data. See docs/LOCAL-FIRST-CHAT.md for precise limits/privacy and cross-platform rollout requirements.
+- Mac: production build passed; 31 unit/HTTP checks and 3 real Ollama/live-news checks passed. Browser verified dated Tulsa sources, persistence, offline clock, offline local greeting, and explicit unavailable-news refusal under blocked outbound networking. Normal server restored. Existing model/runtime unchanged; no paid API or main merge.
+- Earlier commits becabed/84b84dd were pushed after explicit owner authorization to boomersoonerjoe/My-AI-App on this development branch. This local-first milestone is committed locally, pending any new publish instruction. Historical approval-block text below describes the earlier pre-authorization state.
+- Owner acceptance, full article retrieval, specialized live data, packaging/autostart, Windows/Linux and physical mobile validation remain. No broad no-hallucination guarantee is claimed for ordinary generative chat.
+
 # PocketAI - AI Hand-Off & Project Progress Tracker
 
 ## Purpose

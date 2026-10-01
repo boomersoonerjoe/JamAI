@@ -1,3 +1,5 @@
+> V1 is now local-first. See [local-first chat](LOCAL-FIRST-CHAT.md) for device clock, free optional retrieval, extractive local summaries, privacy and current Mac validation. Launch with `scripts/start-mac-chat.sh` for search; static Vite preview alone has no retrieval API.
+
 # Local desktop chat
 
 See [Mac local chat](MAC-LOCAL-AI.md) for the Ollama desktop adapter, setup and validation. The runtime selector preserves the browser provider described below.
