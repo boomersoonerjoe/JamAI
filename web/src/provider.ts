@@ -8,6 +8,7 @@ export interface ChatProvider {
   id: string;
   name: string;
   isAvailable(): Promise<boolean>;
+  dispose?(): Promise<void>;
   prepare(onStatus: (status: ProviderStatus) => void): Promise<void>;
   generate(request: ChatRequest, onUpdate: (text: string) => void, signal: AbortSignal): Promise<string>;
 }

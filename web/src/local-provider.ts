@@ -2,16 +2,19 @@ import type { ChatProvider, ChatRequest, ProviderStatus } from './provider';
 import type { WebWorkerMLCEngine } from '@mlc-ai/web-llm';
 
 export const DEFAULT_MODEL_ID = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
-type Runtime = Pick<WebWorkerMLCEngine, 'chat' | 'resetChat' | 'interruptGenerate'>;
+type Runtime = Pick<WebWorkerMLCEngine, 'chat' | 'resetChat' | 'interruptGenerate'> & { dispose?(): Promise<void> };
 type RuntimeFactory = (model: string, report: (status: ProviderStatus) => void) => Promise<Runtime>;
 
 async function createRuntime(model: string, report: (status: ProviderStatus) => void): Promise<Runtime> {
   const { CreateWebWorkerMLCEngine } = await import('@mlc-ai/web-llm');
   const worker = new Worker(new URL('./llm.worker.ts', import.meta.url), { type: 'module' });
   try {
-    return await CreateWebWorkerMLCEngine(worker, model, {
+    const engine = await CreateWebWorkerMLCEngine(worker, model, {
       initProgressCallback: ({ progress, text }) => report({ phase: 'loading', progress, message: text }),
     }, { context_window_size: 4096 });
+    return Object.assign(engine, { dispose: async () => {
+      try { await engine.unload(); } finally { worker.terminate(); }
+    } });
   } catch (error) {
     worker.terminate();
     throw error;
@@ -36,6 +39,11 @@ export class LocalChatProvider implements ChatProvider {
     private check = browserSupportsLocalAI,
   ) {}
   isAvailable() { return this.check(); }
+  async dispose() {
+    const runtime = this.runtime;
+    this.runtime = undefined;
+    await runtime?.dispose?.();
+  }
   async prepare(report: (status: ProviderStatus) => void): Promise<void> {
     if (this.runtime) { report({ phase: 'ready', message: 'Ready · inference stays on this device' }); return; }
     if (this.loading) return this.loading;

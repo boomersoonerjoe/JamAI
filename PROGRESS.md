@@ -41,7 +41,7 @@ Goal: after each meaningful checkpoint, the repository itself should contain eno
 - Last Updated: 2026-10-01
 - Canonical Hand-Off Location: `PROGRESS.md` on the default branch (`main`)
 - Active Development Branch: `codex/cross-platform-foundation`
-- Status: OLLAMA MAC ADAPTER IMPLEMENTED; QWEN3.5 4B WEIGHTS DOWNLOADING; LIVE INFERENCE PENDING; APPLE V1 PRESERVED AT `395d298`
+- Status: MAC OLLAMA CHAT AND NETWORK-RESTRICTED INFERENCE VERIFIED; READY FOR OWNER TESTING; APPLE V1 PRESERVED AT `395d298`
 - Active Milestone: Version 1 - Cross-platform Chat
 
 The actual Git branch HEAD is the authoritative latest commit. Do not hard-code a commit hash here as the permanent source of truth because updating this file creates another commit.
@@ -94,18 +94,18 @@ Repository inspection shows substantial reusable V1 groundwork:
 IMPORTANT: implemented in source does not mean device-verified. Compilation, package resolution, XCTest execution, real-device behavior, offline execution, MLX performance, memory pressure, and thermal behavior still require Mac/iPhone validation unless later recorded as completed.
 
 ## Work Currently In Progress
-The primary cross-platform PWA now runs Llama 3.2 1B Instruct 4-bit locally through WebLLM/WebGPU in a dedicated browser worker. Production build, strict TypeScript, and seven relevant tests pass. The Mac in-app browser successfully downloaded/loaded the real model, generated a response, recalled `7429` on a follow-up, and retained conversation history across page reload. These results do not establish physical-iPhone behavior.
+The primary PWA has selectable provider-neutral local runtimes: Ollama with Qwen3.5 4B Q4_K_M for desktop, and WebLLM/WebGPU with Llama 3.2 1B for mobile/browser use. The M5/16 GB Mac has Ollama 0.35.0 and verified model weights installed in ignored `.local-ai/`. All 17 tests (including real Ollama inference) and the production build pass. The cached in-app browser generated and recalled `8531`, persisted history after reload, isolated a new chat, and passed Stop/retry with the web server stopped and Ollama's external networking blocked. See `docs/MAC-LOCAL-AI.md` for exact setup, digest, measurements and limits.
 
-The known-good Swift/Apple V1 remains unchanged. No paid service or remote inference has been enabled. Browser model assets require an initial download; retained caches are required for offline use. See `docs/LOCAL-AI-CHAT.md`.
+The previous real WebLLM Mac smoke test remains valid, and Swift/Apple V1 remains unchanged. No paid service or remote inference is enabled. These Mac results do not establish physical-iPhone behavior, cache survival after eviction, or sustained battery/thermal performance.
 
 ## Immediate Next Steps for Incoming Model
-1. Read this file and `docs/CROSS-PLATFORM-ARCHITECTURE.md`; inspect actual branch HEAD/source. Continue `codex/cross-platform-foundation`, never merge into `main` without owner instruction.
-2. Serve the production `web/dist/` at a trusted HTTPS origin accessible to the physical iPhone. No deployment or paid hosting was performed. A Mac LAN HTTP address is insufficient for WebGPU secure context.
-3. Execute all physical-iPhone checks in `docs/LOCAL-AI-CHAT.md`: first download/compile, real streaming/context, Stop/retry, persistence, Safari/Home Screen installation, airplane-mode cold launch/inference, cache retention, background/GPU-loss handling, keyboard/accessibility, memory/latency/battery/thermal behavior.
-4. Fix reproduced browser/device issues. Automatic device-loss recovery and model-load cancellation are not implemented; reload the app to recreate a failed runtime. Keep provider neutrality and app-owned context.
-5. Swift-state import/migration, memory-note editing, and user-facing model switching remain future work. Existing stored schema memory notes are included in the bounded prompt. Do not add voice/image/remote features during local-chat acceptance.
-6. Preserve Swift/Apple V1 and its recorded simulator gate. Do not extrapolate Mac/browser results to iPhone. Do not purchase or enable paid services.
-7. Commit/push coherent changes on the active feature branch and update this hand-off with exact validation and remaining work.
+1. Read this file and the architecture/Mac-local notes; inspect actual branch HEAD/source. Continue `codex/cross-platform-foundation`. Do not merge `main` without owner instruction.
+2. Owner can personally test now at `http://127.0.0.1:4173`. If services stopped, run `scripts/start-local-ai.sh` and `scripts/start-mac-chat.sh` in separate terminals. Runtime/weights/dependencies/build already exist on this Mac; no download is needed. Prefer the same browser/origin for existing conversations.
+3. Complete owner Safari/Chrome Wi-Fi-disconnected chat, relaunch/Mac-restart, keyboard/accessibility, memory pressure, latency/battery/thermal acceptance. Daemon auto-start/native packaging is not implemented.
+4. Preserve phone acceptance as separate work: trusted HTTPS, actual WebGPU compatibility, download/streaming/context/Stop/persistence, Safari/Home Screen offline lifecycle, background/GPU-loss, memory/battery/thermals, and accessibility per `docs/LOCAL-AI-CHAT.md`.
+5. Swift-state import, memory-note editing, model selection within each runtime and trusted LAN support remain future work. Runtime selection between Ollama and WebLLM is implemented. Do not add voice/image/remote features during local-chat acceptance.
+6. Preserve Swift/Apple V1 and its recorded simulator gate. Do not purchase or enable paid services.
+7. Update this hand-off and commit coherent development changes. Automatic approval review rejected the attempted development-branch push because external transfer was not explicitly authorized and the remote unverified. No push occurred; obtain owner authorization before retrying. The no-main-merge instruction remains in force.
 
 ## Architectural Decisions and Guardrails
 - Single-user/private: optimize for one owner, not a public product.
@@ -154,7 +154,7 @@ Mark PASS/FAIL only after actual execution:
 - Local model management: `PocketAI/ModelLibrary.swift`
 
 ## Current Blockers / Owner Decisions Needed
-Physical-iPhone hardware and a trusted HTTPS app origin are needed for device acceptance. No production site was deployed during this milestone. WebGPU presence alone does not guarantee model GPU capability or sufficient iPhone memory. Offline generation and browser cache retention are not yet verified. The historical Apple/MLX physical-device acceptance queue remains pending and separate from the primary PWA milestone.
+Physical-iPhone hardware and a trusted HTTPS app origin are needed for device acceptance. No production site was deployed during this milestone. WebGPU presence alone does not guarantee model GPU capability or sufficient iPhone memory. Mac Ollama network-restricted inference and cached-shell relaunch are verified; physical-phone offline inference and cache eviction/restart survival remain unverified. The historical Apple/MLX physical-device acceptance queue remains pending and separate from the primary PWA milestone.
 
 ## Mandatory End-of-Session Hand-Off
 Before another model takes over or a development session ends:
@@ -172,6 +172,15 @@ If the session ends before these steps can be completed, the Abrupt-Stop / Usage
 > Continue build. Read `PROGRESS.md` from `main` first, inspect the newest commits and active development PR/branch, then continue the recorded PocketAI V1 task from the actual repository state. Preserve the documented architecture and scope. Do not restart completed work, work directly on `main` for unfinished features, make spending decisions, or report builds/tests/device behavior as verified unless they were actually run. If the prior session appears to have ended abruptly, reconstruct the latest safe checkpoint from GitHub before continuing.
 
 ## Session Log
+### 2026-10-01 - Codex completed Mac offline chat acceptance
+- Finished Qwen3.5 4B Q4_K_M download after DNS interruption and conservative partial-file resume recovery; Ollama verified full SHA-256 integrity and wrote the manifest. Digest and installed byte size are recorded in `docs/MAC-LOCAL-AI.md`.
+- Verified real production-provider inference under macOS `sandbox-exec` denying external outbound connections while permitting loopback. The same profile reached local Ollama and blocked an external IP that returned HTTP 301 normally. Cloud remains disabled.
+- All 17 tests passed (15 unit + two real inference tests); verbose focused live run also passed. `7429` recall and Stop/recovery to `Cedar` passed. Recorded 2.223-second first text after weight unload/reload; 512-token browser reply measured 39.94 tokens/sec; Ollama reported 3.18 GB loaded-model GPU memory at context 4096, not total peak RAM.
+- Cached Mac in-app-browser acceptance passed with preview server stopped: fresh reply and `8531` recall, history retained across reload, separate chat without prior number, Stop with partial reply, successful Retry. Close/reopen activates waiting app-cache updates.
+- Added provider disposal on runtime switch; browser engine unloads and its worker terminates. Cleanup unit test passed. Desktop default excludes iPads using desktop user agents. Mac preview launcher works on a minimal PATH with bundled Node and installed Vite, without pnpm on PATH.
+- Production build passed after final source changes; existing WebLLM bundle-size advisory only. Native Swift source and storage schema remain untouched. No main merge, paid service, LAN endpoint or GitHub push.
+- Local logs/weights/runtime in `.local-ai/` are ignored and not committed. Remaining: owner preferred-browser Wi-Fi-off/relaunch/restart/accessibility/long-session memory/battery/thermal acceptance, plus separate cross-platform/device, state-import and memory-editing work. No setup blocker remains for Mac chat.
+
 ### 2026-10-01 - Codex Mac Ollama integration checkpoint
 - Confirmed current branch and clean initial checkout; inspected portable `ChatProvider`, React UI, persistence/context, browser WebLLM provider and preserved Swift/MLX architecture before editing.
 - Confirmed hardware: M5 MacBook Air, 16 GB RAM. Selected Ollama 0.35.0 with `qwen3.5:4b-q4_K_M` (about 3.4 GB weights), thinking disabled, context 4096, response cap 512, two-minute keep-alive.

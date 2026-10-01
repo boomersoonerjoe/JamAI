@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 import { loadData, saveData } from './storage';
@@ -20,8 +20,9 @@ function App() {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState<Conversation>();
   const controller = useRef<AbortController | null>(null);
-  const [providerID, setProviderID] = useState(() => /Macintosh|Windows|X11|Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent) ? 'ollama' : 'webllm');
+  const [providerID, setProviderID] = useState(() => /Macintosh|Windows|X11|Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent) && !(/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1) ? 'ollama' : 'webllm');
   const provider: ChatProvider = useMemo(() => providerID === 'ollama' ? new OllamaChatProvider() : new LocalChatProvider(), [providerID]);
+  useEffect(() => () => { void provider.dispose?.().catch(console.error); }, [provider]);
   const current = data.conversations.find(c => c.id === active);
   function update(next: AppData) {
     saveData(next);

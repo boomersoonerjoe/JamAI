@@ -1,4 +1,3 @@
 # Current Mac-local milestone
 
-Ollama desktop provider implemented on `codex/cross-platform-foundation`; Qwen3.5 4B Q4_K_M download is in progress. Read the latest session log in `PROGRESS.md` and `docs/MAC-LOCAL-AI.md`. Run real-provider inference after weights finish; do not confuse the prior browser WebLLM validation with Qwen/Ollama validation.
-
+Mac local chat is ready for owner testing on `codex/cross-platform-foundation`: Ollama 0.35.0 + Qwen3.5 4B Q4_K_M installed, 17 tests passed including real network-restricted inference, production build passed, cached browser chat/recall/persistence/isolation/Stop/retry verified. Open `http://127.0.0.1:4173`; launch the two scripts in `docs/MAC-LOCAL-AI.md` if services are stopped. Read the latest `PROGRESS.md` entry and Mac-local notes for exact evidence and remaining owner acceptance. No main merge or GitHub push; push was rejected by automatic approval review and needs explicit owner authorization.

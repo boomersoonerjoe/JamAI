@@ -28,6 +28,15 @@ describe('local provider', () => {
     expect(fake.resetChat).toHaveBeenCalledTimes(2);
     expect(fake.create.mock.calls[0][0]).toMatchObject({ stream: true, max_tokens: 256, messages: [{ role: 'system' }, { role: 'user', content: 'Remember 7429' }] });
   });
+  it('disposes a loaded runtime when the UI switches providers', async () => {
+    const fake = fakeRuntime();
+    const dispose = vi.fn(async () => {});
+    const provider = new LocalChatProvider(undefined, async () => Object.assign(fake.runtime, { dispose }), async () => true);
+    await provider.prepare(vi.fn());
+    await provider.dispose();
+    expect(dispose).toHaveBeenCalledTimes(1);
+    await expect(provider.generate({ prompt: 'test' }, vi.fn(), new AbortController().signal)).rejects.toThrow('Load');
+  });
   it('rejects unsupported browsers without loading any runtime', async () => {
     const factory = vi.fn();
     const provider = new LocalChatProvider(undefined, factory, async () => false);
