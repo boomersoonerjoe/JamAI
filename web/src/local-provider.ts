@@ -77,7 +77,7 @@ export class LocalChatProvider implements ChatProvider {
         messages: [
           { role: 'system', content: systemInstructions(request) },
           { role: 'user', content: inferencePrompt(request) },
-        ], stream: true, max_tokens: 256, temperature: 0.6,
+        ], stream: true, max_tokens: 256, temperature: request.evidence ? 0 : 0.6,
       });
       let text = '';
       for await (const chunk of chunks) {

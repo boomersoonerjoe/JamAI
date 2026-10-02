@@ -160,3 +160,10 @@ it('separates forecast phrasing from the exact city/state and retrieves today da
   payload.daily.time[0]-=86400;
   await expect(retrieveCurrentWeather({...request,query},'Tulsa,ok',new AbortController().signal,fetcher,now)).rejects.toThrow('date');
 });
+
+it('serves bounded article reading only for the loopback origin and rejects private targets',async()=>{
+  let calls=0;const server=makeServer(undefined,async url=>{calls++;return {status:'retrieved',text:'Saved public article.',url,fetchedAt:now.toISOString()};});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;
+  const send=(url,origin='http://127.0.0.1:4173')=>fetch(base+'/api/article',{method:'POST',headers:{'Content-Type':'application/json',Origin:origin},body:JSON.stringify({url})});
+  try{expect((await send('http://127.0.0.1/private')).status).toBe(400);expect((await send('https://example.org/article','https://evil.example')).status).toBe(403);expect(calls).toBe(0);expect((await send('https://example.org/article')).status).toBe(200);expect(calls).toBe(1);}finally{await new Promise(resolve=>server.close(resolve));}
+});

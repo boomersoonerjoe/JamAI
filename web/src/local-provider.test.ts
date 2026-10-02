@@ -83,6 +83,6 @@ describe('bounded portable context', () => {
   it('limits UTF-8 input size and excludes excessive old history', () => {
     const message = { id: '1', text: '🙂'.repeat(301), role: 'user' as const, createdAt: '' };
     expect(() => buildPrompt({ id: 'c', title: '', messages: [message] }, [])).toThrow('1,200');
-    expect(buildPrompt({ id: 'c', title: '', messages: [{ ...message, text: 'old'.repeat(300) }, { ...message, text: 'hello' }] }, [])).not.toContain('oldold');
+    const old = 'old'.repeat(1000); const prompt = buildPrompt({ id: 'c', title: '', messages: [{ ...message, text: old }, { ...message, text: 'hello' }] }, []); expect(prompt).not.toContain(old); expect(new TextEncoder().encode(prompt).length).toBeLessThan(2400); expect(prompt).toContain('hello');
   });
 });

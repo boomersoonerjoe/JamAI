@@ -1,6 +1,6 @@
 import type { DeviceContext } from './device-context';
 export type SearchMode = 'auto' | 'always' | 'web' | 'off';
-export interface SearchSource { title: string; url: string; excerpt: string; publisher?: string; publishedAt?: string }
+export interface SearchSource { title: string; url: string; excerpt: string; publisher?: string; publishedAt?: string; article?: {status:'retrieved'|'restricted'|'unavailable'; text?:string; fetchedAt:string; url:string} }
 export interface SearchEvidence {
   query: string; provider: string; fetchedAt: string; timeZone: string;
   scope: 'today' | 'recent' | 'web' | 'weather'; sources: SearchSource[];
@@ -35,4 +35,15 @@ export async function searchInternet(query: string, clock: DeviceContext, signal
   if (!response.ok) throw new Error(evidence.error || `Search returned HTTP ${response.status}.`);
   if (!Array.isArray(evidence.sources) || !evidence.sources.length || evidence.sources.some(s => !safeSourceURL(s.url))) throw new Error('Search returned no usable sources.');
   return evidence;
+}
+
+export async function readSourceArticle(source: SearchSource, signal: AbortSignal): Promise<SearchSource> {
+  if (source.article || !safeSourceURL(source.url)) return source;
+  try {
+    const response = await fetch('/api/article',{method:'POST',signal,headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({url:source.url})});
+    if (!response.ok) throw new Error('Article unavailable');
+    const article = await response.json() as NonNullable<SearchSource['article']>;
+    if (!['retrieved','restricted','unavailable'].includes(article.status) || !safeSourceURL(article.url)) throw new Error('Invalid article response');
+    return {...source,article:{...article,text:article.text?.slice(0,12000)}};
+  } catch {signal.throwIfAborted();return {...source,article:{status:'unavailable',url:source.url,fetchedAt:new Date().toISOString()}};}
 }

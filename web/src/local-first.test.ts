@@ -1,3 +1,4 @@
+import { articleContext } from './retrieval-context';
 import { describe, it, expect, vi } from 'vitest';
 import { deviceContext, isDeviceClockQuestion, type DeviceContext } from './device-context';
 import { answerConversation } from './chat-service';
@@ -49,7 +50,7 @@ describe('local-first routing and natural replies', () => {
   it('streams normal retrieved prose without validation gates, warnings or sources by default', async () => {
     const s = setup('Tulsa is at 70°F, feeling like 74°F.');
     const result = await answerConversation(conversation('What is the weather in Tulsa right now?'),[],s.provider,s.options);
-    expect(result.text).toBe('Tulsa is at 70°F, feeling like 74°F.'); expect(result.evidence).toBeUndefined(); expect(result.retryable).toBe(false);
+    expect(result.text).toBe('Tulsa is at 70°F, feeling like 74°F.'); expect(result.evidence).toEqual(evidence); expect(result.retryable).toBe(false);
     expect(s.generate).toHaveBeenCalledTimes(1); expect(s.generate.mock.calls[0][0]).toMatchObject({evidence,showSources:false}); expect(s.generate.mock.calls[0][0].responseKind).toBeUndefined();
   });
   it('only exposes sources when requested and keeps notes/history out of search', async () => {
@@ -69,4 +70,38 @@ describe('local-first routing and natural replies', () => {
     s.search.mockImplementationOnce(async()=>{abort.abort(); throw new DOMException('Stopped','AbortError');});
     await expect(answerConversation(conversation('Tulsa news today'),[],s.provider,{...s.options,signal:abort.signal})).rejects.toMatchObject({name:'AbortError'}); expect(s.onUpdate).not.toHaveBeenCalled();
   });
+});
+
+
+it('retains evidence without visible sources and reuses article content through chained offline follow-ups', async () => {
+  const e={...evidence,sources:[{title:'What Trump Has Built',url:'https://example.org/trump',excerpt:'Trump discusses a political coalition.',article:{status:'retrieved' as const,text:'Trump built a political coalition of voters and allies.',url:'https://example.org/trump',fetchedAt:clock().isoTime}}]};
+  const c=conversation('what was the main thing the article pointed out that he built?');
+  c.messages.unshift({id:'a',role:'assistant',text:'TIME published What Trump Has Built.',createdAt:'',evidence:e});
+  const s=setup('Trump built a political coalition.');const readArticle=vi.fn();
+  const result=await answerConversation(c,[],s.provider,{...s.options,mode:'off',readArticle});
+  expect(s.search).not.toHaveBeenCalled();expect(readArticle).not.toHaveBeenCalled();expect(result.evidence?.sources[0].article?.text).toContain('coalition');expect(s.generate.mock.calls[0][0]).toMatchObject({recalled:true,showSources:false});
+  c.messages.push({id:'b',role:'assistant',text:result.text,createdAt:'',evidence:result.evidence},{id:'c',role:'user',text:'what did it say?',createdAt:''});
+  await answerConversation(c,[],s.provider,s.options);expect(s.search).not.toHaveBeenCalled();
+});
+it('reads the referenced source once without a fresh search and retains it on the message', async()=>{
+  const c=conversation('Tell me more about that story.');c.messages.unshift({id:'a',role:'assistant',text:'A Tulsa library opens a reading room.',createdAt:'',evidence});
+  const s=setup();const readArticle=vi.fn(async source=>({...source,article:{status:'retrieved' as const,text:'The library reading room is open to residents.',url:source.url,fetchedAt:clock().isoTime}}));
+  const result=await answerConversation(c,[],s.provider,{...s.options,readArticle});expect(readArticle).toHaveBeenCalledTimes(1);expect(s.search).not.toHaveBeenCalled();expect(result.evidence?.sources[0].article?.text).toContain('residents');
+  const unrelated=conversation('What is the capital of Oklahoma?');unrelated.messages.unshift(...c.messages.slice(0,-1));await answerConversation(unrelated,[],s.provider,s.options);expect(s.generate.mock.calls.at(-1)![0].evidence).toBeUndefined();
+});
+
+it('includes relevant saved article passages beyond the first context window',()=>{
+ const text='Opening paragraph. '+ 'General background. '.repeat(400)+'The spacecraft discovered methane near the end of the article.';
+ const selected=articleContext(text,'What did the article say about methane?');expect(selected).toContain('discovered methane');expect(selected.length).toBeLessThanOrEqual(4000);
+});
+
+it('reads an explicitly supplied public article URL without searching, then saves its text',async()=>{
+ const s=setup();const readArticle=vi.fn(async source=>({...source,article:{status:'retrieved' as const,text:'A public article body.',url:source.url,fetchedAt:clock().isoTime}}));
+ const result=await answerConversation(conversation('Read this article: https://example.org/story'),[],s.provider,{...s.options,readArticle});expect(s.search).not.toHaveBeenCalled();expect(readArticle).toHaveBeenCalledTimes(1);expect(result.evidence?.sources[0].article?.text).toContain('article body');
+});
+
+it('recalls an explicit article reference across unrelated turns without reusing it for generic math follow-ups',async()=>{
+ const s=setup();const c=conversation('What did that article say?');c.messages.unshift({id:'source',role:'assistant',text:'A news story.',createdAt:'',evidence:{...evidence,sources:evidence.sources.map(source=>({...source,article:{status:'retrieved' as const,text:'Saved story text.',url:source.url,fetchedAt:clock().isoTime}}))}},{id:'math',role:'assistant',text:'3 hours.',createdAt:''});
+ await answerConversation(c,[],s.provider,{...s.options,mode:'off'});expect(s.generate.mock.calls.at(-1)![0].recalled).toBe(true);
+ c.messages.at(-1)!.text='Tell me more';await answerConversation(c,[],s.provider,s.options);expect(s.generate.mock.calls.at(-1)![0].evidence).toBeUndefined();
 });

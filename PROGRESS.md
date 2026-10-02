@@ -1,3 +1,11 @@
+# Latest fix: retained retrieval/article context and subject references, 2026-10-02
+
+- Confirmed source evidence was discarded unless sources were requested; follow-up prompts also omitted stored evidence and had a tiny history budget. Evidence now persists on every retrieved reply regardless of visibility, and recognized source/story/article follow-ups reuse it without a fresh search. Explicit article references can reach earlier retrieval across unrelated turns; generic references stay with the previous reply.
+- Added bounded public-article reading from the prior source or an explicitly supplied URL, with cached text/status, private-address/DNS/redirect protections, no credentials/paywall bypass and no paid API. Cached article text survives reload/offline follow-ups; snippets remain available if full text cannot be read. Source cards stay opt-in; ordinary questions, clock/weather/forecast behavior and schema remain.
+- The Vance substitution came from model generation, not an app name rewrite. Evidence-based reference instructions prioritize the saved source over mistaken prior names; retrieved replies use temperature zero. Real local-model synthetic regression keeps Trump as the subject despite an earlier Vance mistake. Model errors/search relevance remain possible.
+- Mac: all 70 checks passed (50 unit/HTTP and 20 live); build passed. Browser verified direct NASA article reading and a cached follow-up after reload with search Off; Auto restored. See docs/RETRIEVAL-CONTEXT.md for exact evidence and limits. Existing old messages with discarded evidence need one fresh retrieval.
+- Development branch only; no push or merge.
+
 # Latest fix: screenshot weather wording and today forecast, 2026-10-02
 
 - Reproduced the exact owner question “what is the weather in Tulsa,ok supposed to be today?” failing because the location parser retained “supposed to be” after Tulsa,ok. It now separates expected-weather phrasing from the city/state while preserving state matching.

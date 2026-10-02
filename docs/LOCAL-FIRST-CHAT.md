@@ -1,5 +1,9 @@
 # NhomeAI V1 local-first chat
 
+## Saved sources and article follow-ups (2026-10-02)
+
+Search results now persist on every retrieved reply even when source lists are hidden. Article/story follow-ups reuse saved evidence and accessible cached article text rather than searching again. Public article URLs can be read once and retained; supplied URLs can be read directly. Cached evidence survives reloads and works with search Off. Old messages whose evidence was already discarded need one new retrieval. See [retrieval context](RETRIEVAL-CONTEXT.md) for subject-reference handling, bounded safe article access, Mac validation and limitations. Prior sections describing no article reading are historical.
+
 ## Today forecast correction (2026-10-02)
 
 “what is the weather in Tulsa,ok supposed to be today?” now separates the city/state from forecast phrasing. Expected-weather questions use Open-Meteo daily high, low and rain chance for the resolved location’s current calendar day; right-now questions retain current data. Exact screenshot wording, capital, driving math and current Tulsa weather passed real local-model/retrieval testing; 41 unit/HTTP checks and build passed. Mac UI also verified the forecast answer without source lists or warnings. Other forecast periods retain general web search. The running retrieval server was restarted with this fix.

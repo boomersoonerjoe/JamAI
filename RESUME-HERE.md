@@ -1,3 +1,9 @@
+# Current retrieval-context checkpoint (2026-10-02)
+
+Stay on codex/cross-platform-foundation; do not push or merge. Search evidence is now saved regardless of source visibility. Article/story follow-ups recall saved evidence; public article URLs can be read once with bounded safe Node retrieval and cached for reload/offline follow-ups. Explicit article references can reach across intervening turns; generic references do not drag unrelated old topics in. Stronger source-person reference instructions and temperature zero for retrieved replies address the Trump/Vance confusion; models remain fallible. Source cards are still opt-in; normal chat stays local.
+
+Read docs/RETRIEVAL-CONTEXT.md for implementation/tests/privacy/limits. Older chats whose evidence was discarded need one new retrieval. Real NASA public article and synthetic Trump-name regression pass; browser reload + search-Off follow-up verified, Auto restored. Physical other-platform acceptance remains pending. Runtime/model installed; start scripts/start-local-ai.sh and scripts/start-mac-chat.sh at localhost:4173. New /api/article server must run for uncached public article reads.
+
 # Current weather wording checkpoint (2026-10-02)
 
 The owner screenshot exposed location parsing of “Tulsa,ok supposed to be” instead of “Tulsa,ok”. Fixed phrase separation and added free Open-Meteo today high/low/rain chance for expected-weather queries. Location-local date/units checked; right-now weather stays current data. 41 unit/HTTP + 4 exact live routing/forecast tests and build passed; exact screenshot query works in Mac UI. Confirmed loopback retrieval server restarted. Refresh app/connect local Ollama before owner retest. No push/merge; remain on codex/cross-platform-foundation. Other forecast periods retain existing general search behavior.

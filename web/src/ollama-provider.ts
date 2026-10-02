@@ -50,7 +50,7 @@ export class OllamaChatProvider implements ChatProvider {
           messages: [
             { role: 'system', content: systemInstructions(request) },
             { role: 'user', content: inferencePrompt(request) },
-          ], options: { num_ctx: 4096, num_predict: 512, temperature: request.responseKind ? 0 : 0.6 } }),
+          ], options: { num_ctx: 4096, num_predict: 512, temperature: request.responseKind || request.evidence ? 0 : 0.6 } }),
       });
       if (!response.ok) throw new Error(`Local Ollama returned HTTP ${response.status}. Check that the model is installed.`);
       if (!response.body) throw new Error('Ollama returned no response stream.');

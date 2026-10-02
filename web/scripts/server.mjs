@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { retrieveArticle, articleURL } from './article-service.mjs';
 import { retrieveSearch, validateSearch } from './search-service.mjs';
 
 const ROOT = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -9,15 +10,15 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 function json(response, status, data) {
   response.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); response.end(JSON.stringify(data));
 }
-export function makeServer(search = retrieveSearch) {
+export function makeServer(search = retrieveSearch, article = retrieveArticle) {
   return createServer(async (request, response) => {
     const host = request.headers.host || '';
     const origin = request.headers.origin;
-    // No LAN binding, arbitrary upstream URL, open proxy, or wildcard CORS.
+    // Loopback-only retrieval; article requests also reject private network targets.
     if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host) || (origin && !/^http:\/\/(127\.0\.0\.1|localhost):(4173|5173)$/.test(origin))) return json(response, 403, { error: 'Only the local NhomeAI origin is permitted.' });
     let path;
     try { path = new URL(request.url, `http://${host}`).pathname; } catch { return json(response, 400, { error: 'Invalid URL.' }); }
-    if (path === '/api/search') {
+    if (path === '/api/search' || path === '/api/article') {
       if (request.method !== 'POST') return json(response, 405, { error: 'Use POST for search.' });
       if (request.headers['content-type']?.split(';')[0] !== 'application/json') return json(response, 415, { error: 'Search requires JSON.' });
       const controller = new AbortController();
@@ -30,9 +31,9 @@ export function makeServer(search = retrieveSearch) {
           chunks.push(chunk);
         }
         let input;
-        try { input = validateSearch(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+        try { const body = JSON.parse(Buffer.concat(chunks).toString('utf8')); input = path === '/api/article' ? articleURL(body.url).href : validateSearch(body); }
         catch { return json(response, 400, { error: 'Invalid search query, date, time zone or mode.' }); }
-        const result = await search(input, controller.signal);
+        const result = await (path === '/api/article' ? article : search)(input, controller.signal);
         if (!controller.signal.aborted) json(response, 200, result);
       } catch (error) {
         if (!controller.signal.aborted && !response.destroyed) json(response, 503, { error: error instanceof Error ? error.message : 'Free search is unavailable.' });
