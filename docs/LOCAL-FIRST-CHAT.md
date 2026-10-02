@@ -1,5 +1,9 @@
 # NhomeAI V1 local-first chat
 
+## Today forecast correction (2026-10-02)
+
+“what is the weather in Tulsa,ok supposed to be today?” now separates the city/state from forecast phrasing. Expected-weather questions use Open-Meteo daily high, low and rain chance for the resolved location’s current calendar day; right-now questions retain current data. Exact screenshot wording, capital, driving math and current Tulsa weather passed real local-model/retrieval testing; 41 unit/HTTP checks and build passed. Mac UI also verified the forecast answer without source lists or warnings. Other forecast periods retain general web search. The running retrieval server was restarted with this fix.
+
 ## Current chat routing (2026-10-01)
 
 Normal conversation, math and stable general knowledge go directly to the local model. Search runs only for changing/live information or explicit search/browse/look-up requests. Legacy Always settings now apply automatic routing too; general-web preference still chooses the web tool for eligible queries. Off still disables internet access. Device-clock questions keep their existing direct offline behavior.

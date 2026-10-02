@@ -70,6 +70,7 @@ export function weatherLocation(question) {
   let location = after && !/^(?:fahrenheit|celsius)\b/i.test(after) ? after : before;
   if (!location) return undefined;
   location = location.replace(/^(?:(?:what(?:'s| is)|show me|tell me|give me|i want|please|the|current|currently|local|today's)\s+)+/i, '')
+    .replace(/\s+(?:supposed to be|going to be|expected to be|expected|like)(?:\s.*)?$/i, '')
     .replace(/\s+in (?:fahrenheit|celsius).*$/i, '')
     .replace(/\s+(?:right now|today|tonight|tomorrow|this week|currently|current|weather|forecast)(?:\s.*)?$/i, '').trim();
   if (!location || !/^[\p{L}\p{N} .,'’-]+$/u.test(location)) return undefined;
@@ -124,20 +125,26 @@ export async function retrieveCurrentWeather(request, location, signal, requestF
   if (!place || !Number.isFinite(place.latitude) || !Number.isFinite(place.longitude)) throw new Error('Requested weather location could not be verified.');
   if (matches.length > 1 && (place.population || 0) < 10 * (matches[1].population || 1)) throw new Error('Weather location is ambiguous. Include a state or country.');
   const unit = /celsius|centigrade/i.test(request.query) ? 'celsius' : /fahrenheit/i.test(request.query) || place.country_code === 'US' ? 'fahrenheit' : 'celsius';
+  const daily = /\b(?:supposed to be|going to be|expected|forecast|high|low)\b/i.test(request.query) && !/\b(?:tomorrow|next|yesterday|last|this week)\b/i.test(request.query);
   const url = new URL('https://api.open-meteo.com/v1/forecast');
-  url.search = new URLSearchParams({latitude:String(place.latitude),longitude:String(place.longitude),current:'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m',temperature_unit:unit,wind_speed_unit:unit === 'fahrenheit' ? 'mph' : 'kmh',timeformat:'unixtime',timezone:'UTC',forecast_days:'1'}).toString();
+  url.search = new URLSearchParams({latitude:String(place.latitude),longitude:String(place.longitude),current:'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m',temperature_unit:unit,wind_speed_unit:unit === 'fahrenheit' ? 'mph' : 'kmh',timeformat:'unixtime',timezone:daily ? 'auto' : 'UTC',forecast_days:'1',...(daily ? {daily:'temperature_2m_max,temperature_2m_min,precipitation_probability_max'} : {})}).toString();
   const weather = await get(url), c = weather.current, u = weather.current_units;
   if (!c || !u || ![c.time,c.temperature_2m,c.apparent_temperature,c.relative_humidity_2m,c.wind_speed_10m].every(Number.isFinite) || now.getTime()/1000-c.time > 7200 || c.time-now.getTime()/1000 > 900) throw new Error('Weather data is missing or stale.');
   const expectedUnit = unit === 'fahrenheit' ? '°F' : '°C';
   if (u.temperature_2m !== expectedUnit || u.apparent_temperature !== expectedUnit || u.relative_humidity_2m !== '%' || !['mp/h','km/h'].includes(u.wind_speed_10m)) throw new Error('Weather data units do not match the request.');
   const name = [place.name,place.admin1,place.country].filter(Boolean).join(', ');
-  const excerpt = `${name}: model-based current weather at ${new Date(c.time*1000).toISOString()}. Temperature ${c.temperature_2m}${u.temperature_2m}; feels like ${c.apparent_temperature}${u.apparent_temperature}; humidity ${c.relative_humidity_2m}${u.relative_humidity_2m}; wind ${c.wind_speed_10m} ${u.wind_speed_10m}. This is a weather-model estimate, not a station observation.`;
-  return {query:request.query,provider:'Open-Meteo (free noncommercial weather)',fetchedAt:now.toISOString(),timeZone:request.timeZone,scope:'weather',sources:[{title:`${name} current weather model`,url:url.href,excerpt,publisher:'Open-Meteo · GeoNames location data'}]};
+  let excerpt = `${name}: model-based current weather at ${new Date(c.time*1000).toISOString()}. Temperature ${c.temperature_2m}${u.temperature_2m}; feels like ${c.apparent_temperature}${u.apparent_temperature}; humidity ${c.relative_humidity_2m}${u.relative_humidity_2m}; wind ${c.wind_speed_10m} ${u.wind_speed_10m}. This is a weather-model estimate, not a station observation.`;
+  if (daily) {
+    const d = weather.daily, du = weather.daily_units;
+    if (!d || !du || ![d.time?.[0],d.temperature_2m_max?.[0],d.temperature_2m_min?.[0],d.precipitation_probability_max?.[0]].every(Number.isFinite) || du.temperature_2m_max !== expectedUnit || du.temperature_2m_min !== expectedUnit || du.precipitation_probability_max !== '%' || d.precipitation_probability_max[0] < 0 || d.precipitation_probability_max[0] > 100 || localDay(new Date(d.time[0]*1000),weather.timezone) !== localDay(now,weather.timezone)) throw new Error('Today forecast is missing or has the wrong date/units.');
+    excerpt = `${name}: forecast for ${localDay(now,weather.timezone)} (${weather.timezone}). High ${d.temperature_2m_max[0]}${expectedUnit}; low ${d.temperature_2m_min[0]}${expectedUnit}; chance of precipitation ${d.precipitation_probability_max[0]}%. Current temperature ${c.temperature_2m}${expectedUnit}; feels like ${c.apparent_temperature}${expectedUnit}.`;
+  }
+  return {query:request.query,provider:'Open-Meteo (free noncommercial weather)',fetchedAt:now.toISOString(),timeZone:request.timeZone,scope:'weather',sources:[{title:`${name} ${daily ? "today forecast" : "current weather model"}`,url:url.href,excerpt,publisher:'Open-Meteo · GeoNames location data'}]};
 }
 export async function retrieveWeb(request, signal, requestFetch = fetch, now = new Date()) {
   const query = webSearchQuery(request.query);
   const location = weatherLocation(request.query);
-  if (location && !/tomorrow|next|yesterday|last|forecast|this week/i.test(request.query)) {
+  if (location && !/tomorrow|next|yesterday|last|this week/i.test(request.query)) {
     try { return await retrieveCurrentWeather(request,location,signal,requestFetch,now); } catch { signal.throwIfAborted(); }
   }
   const endpoints = [

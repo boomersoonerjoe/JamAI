@@ -1,3 +1,7 @@
+# Current weather wording checkpoint (2026-10-02)
+
+The owner screenshot exposed location parsing of “Tulsa,ok supposed to be” instead of “Tulsa,ok”. Fixed phrase separation and added free Open-Meteo today high/low/rain chance for expected-weather queries. Location-local date/units checked; right-now weather stays current data. 41 unit/HTTP + 4 exact live routing/forecast tests and build passed; exact screenshot query works in Mac UI. Confirmed loopback retrieval server restarted. Refresh app/connect local Ollama before owner retest. No push/merge; remain on codex/cross-platform-foundation. Other forecast periods retain existing general search behavior.
+
 # Current routing checkpoint
 
 Keep codex/cross-platform-foundation; do not push or merge. Latest owner request supersedes prior quote validation and source-warning UX: ordinary/stable questions go directly to local Qwen/Ollama; only live information or explicit search uses retrieval. Natural streamed replies, sources only when asked, no validation refusals or automatic warnings. Search settings retain Off and web preference; legacy Always values no longer force ordinary queries online. Clock/privacy/free bounded retrieval remain. 57 Mac regressions passed; final owner examples passed (Oklahoma City, 3 hours, current Tulsa weather). Read current docs/LOCAL-FIRST-CHAT.md section; earlier entries are historical.

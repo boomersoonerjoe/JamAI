@@ -1,3 +1,10 @@
+# Latest fix: screenshot weather wording and today forecast, 2026-10-02
+
+- Reproduced the exact owner question “what is the weather in Tulsa,ok supposed to be today?” failing because the location parser retained “supposed to be” after Tulsa,ok. It now separates expected-weather phrasing from the city/state while preserving state matching.
+- Added today daily high/low and maximum precipitation probability to the free Open-Meteo path for expected-weather/forecast requests, with location-local day and units checked. Current/right-now requests retain current data. Tomorrow/multi-day/historical requests still use existing search behavior; no broader forecast rollout is claimed.
+- Mac: 41 unit/HTTP checks and 4 exact owner live questions passed; production build passed. Screenshot wording returned Tulsa’s retrieved daily high/low/rain chance in natural local-Qwen prose; Mac UI verified the same without source lists or warnings. Capital/math stayed local (Oklahoma City/3 hours). Confirmed retrieval server restarted with the fix.
+- Work remains local on codex/cross-platform-foundation; no push or merge.
+
 # Latest fix: direct local routing and clean retrieved replies, 2026-10-01
 
 - Narrowed search triggers: normal conversation, math, general knowledge and conceptual research/comparisons stay local, even with saved legacy Always settings. Live/current questions and explicit search requests use retrieval; Off/device-clock behavior retained.

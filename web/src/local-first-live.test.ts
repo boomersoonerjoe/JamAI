@@ -63,7 +63,7 @@ for (const [query,kind] of [
   },150000);
 }
 
-for (const [query,expected] of [['What is the capital of Oklahoma?','Oklahoma City'],['If I drive 180 miles at 60 mph, how long will it take?','3 hours'],['What is the weather in Tulsa right now?','Tulsa']] as const) {
+for (const [query,expected] of [['What is the capital of Oklahoma?','Oklahoma City'],['If I drive 180 miles at 60 mph, how long will it take?','3 hours'],['What is the weather in Tulsa right now?','Tulsa'],['what is the weather in Tulsa,ok supposed to be today?','Tulsa']] as const) {
   it.skipIf(!enabled)(`owner routing example: ${query}`,async()=>{
     const provider=new OllamaChatProvider(); await provider.prepare(()=>{});
     const clock=deviceContext(); let searched=false;
@@ -73,6 +73,6 @@ for (const [query,expected] of [['What is the capital of Oklahoma?','Oklahoma Ci
       expect(response.ok).toBe(true); return response.json();
     },onUpdate(){},onActivity(){}});
     console.log(JSON.stringify({query,answer:result.text,searched}));
-    expect(result.text).toContain(expected); expect(searched).toBe(/weather/i.test(query)); expect(result.evidence).toBeUndefined(); expect(result.text).not.toMatch(/\[\d+\]|publication|couldn't validate|not independently verified/i);
+    expect(result.text).toContain(expected); if (/supposed to be/.test(query)) expect(result.text).toMatch(/high/i); expect(searched).toBe(/weather/i.test(query)); expect(result.evidence).toBeUndefined(); expect(result.text).not.toMatch(/\[\d+\]|publication|couldn't validate|not independently verified/i);
   },150000);
 }

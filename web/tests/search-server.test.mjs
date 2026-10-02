@@ -143,3 +143,20 @@ it('resolves exact weather city/state, preserves Celsius and rejects stale/wrong
   await expect(retrieveCurrentWeather(request,'Tulsa, TX',new AbortController().signal,fetcher,now)).rejects.toThrow('location');
   await expect(retrieveCurrentWeather(request,'Tulsa',new AbortController().signal,async url => new Response(JSON.stringify(url.hostname.includes('geocoding') ? {results:[place]} : {current:{...c,time:c.time-10000},current_units:u})),now)).rejects.toThrow('stale');
 });
+
+it('separates forecast phrasing from the exact city/state and retrieves today daily values', async () => {
+  const query = 'what is the weather in Tulsa,ok supposed to be today?';
+  expect(weatherLocation(query)).toBe('Tulsa,ok');
+  expect(weatherLocation('weather in Oklahoma City, OK going to be today?')).toBe('Oklahoma City, OK');
+  const place={name:'Tulsa',admin1:'Oklahoma',country:'United States',country_code:'US',population:400000,latitude:36.15,longitude:-95.99};
+  const payload={timezone:'America/Chicago',current:{time:now.getTime()/1000,temperature_2m:70,apparent_temperature:72,relative_humidity_2m:60,wind_speed_10m:5},current_units:{temperature_2m:'°F',apparent_temperature:'°F',relative_humidity_2m:'%',wind_speed_10m:'mp/h'},daily:{time:[new Date('2026-10-01T05:00:00Z').getTime()/1000],temperature_2m_max:[80],temperature_2m_min:[60],precipitation_probability_max:[40]},daily_units:{temperature_2m_max:'°F',temperature_2m_min:'°F',precipitation_probability_max:'%'}};
+  const fetcher=async url=>{
+    if(url.hostname.includes('geocoding')){expect(url.searchParams.get('name')).toBe('Tulsa');return new Response(JSON.stringify({results:[place]}));}
+    expect(url.searchParams.get('daily')).toContain('temperature_2m_max');expect(url.searchParams.get('timezone')).toBe('auto');
+    return new Response(JSON.stringify(payload));
+  };
+  const result=await retrieveWeb({...request,query,kind:'web'},new AbortController().signal,fetcher,now);
+  expect(result.sources[0].excerpt).toContain('High 80°F; low 60°F; chance of precipitation 40%');
+  payload.daily.time[0]-=86400;
+  await expect(retrieveCurrentWeather({...request,query},'Tulsa,ok',new AbortController().signal,fetcher,now)).rejects.toThrow('date');
+});
