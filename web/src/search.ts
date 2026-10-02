@@ -5,8 +5,17 @@ export interface SearchEvidence {
   query: string; provider: string; fetchedAt: string; timeZone: string;
   scope: 'today' | 'recent' | 'web' | 'weather'; sources: SearchSource[];
 }
+export function wantsSources(text: string) {
+  return /\b(sources?|citations?|references?)\b|\b(?:show|include|give|provide)\b.*\blinks?\b|\bcite\b/i.test(text);
+}
 export function needsCurrentInformation(text: string) {
-  return /\b(news|headlines?|breaking|weather|forecast|latest|current|recent|live|up[- ]to[- ]date|stock|stocks|price|prices|scores?|exchange rate|opening hours|release date|availability|products?|buy|buying|shopping|cost|costs|deals?|research|compare|comparison|reviews?|recommend(?:ations?)?|current events|laptops?|smartphones?|tablets?|macbook|iphone)\b|\b(search|browse|look up|google)\b|\b(how much|where can i buy|who (?:is|are)|when (?:is|does)|is .+ (?:open|available|released))\b|\b(?:today|tonight|this week|this month|this year|right now)\b.*\b(happen|happening|happened|happenings|in|at)\b/i.test(text);
+  const explicit = /\b(search|browse|google)\b|\blook\s+up\b/i.test(text);
+  const liveTopic = /\b(news|headlines?|breaking|weather|forecast|stock price|stock market|exchange rates?|opening hours|availability|current events)\b/i.test(text);
+  const changingQuestion = /\b(?:latest|up[- ]to[- ]date)\b|\b(?:current|recent|live)\b.*\b(?:versions?|releases?|events?|conditions?|temperatures?|president|mayor|governor|ceo|results?|status|prices?)\b|\b(?:prices?|scores?|deals?)\b|\bwho (?:is|are)\b.*\b(?:president|mayor|governor|prime minister|ceo)\b|\bis .+ (?:open|available|released)\b/i.test(text);
+  const timeSensitive = /\b(today|tonight|this week|this month|this year|right now)\b/i.test(text) && /\b(happen|happening|happened|events?|cost|released|release|open|temperature|rain)\b/i.test(text);
+  const historical = /\b(?:history|historical|in \d{4}|was|were)\b/i.test(text);
+  const conceptual = /\b(?:what (?:is|are)|how (?:does|do)|explain|define)\b.*\b(?:weather|forecast|stock market|exchange rate|news|price elasticity)\b/i.test(text) && !/\b(?:in|for|today|now|current|latest|tomorrow)\b/i.test(text);
+  return explicit || (!historical && !conceptual && (liveTopic || changingQuestion || timeSensitive));
 }
 export function safeSourceURL(value: string) {
   try {

@@ -1,5 +1,13 @@
 # NhomeAI V1 local-first chat
 
+## Current chat routing (2026-10-01)
+
+Normal conversation, math and stable general knowledge go directly to the local model. Search runs only for changing/live information or explicit search/browse/look-up requests. Legacy Always settings now apply automatic routing too; general-web preference still chooses the web tool for eligible queries. Off still disables internet access. Device-clock questions keep their existing direct offline behavior.
+
+Retrieved answers stream as ordinary local-model prose, without the former structured-quote validation/repair gate, automatic citation lists, verification warnings or publication-date caveats. Sources are displayed only when the current question requests sources/citations/links. Saved old messages are not rewritten. Missing internet/results still produces a short retrieval error instead of invented live data. Safe-link checks, free endpoints, privacy and retrieval bounds remain.
+
+Mac regression: 57 tests passed (40 unit/HTTP, 17 live). The final exact-example rerun returned “The capital of Oklahoma is Oklahoma City.” and “3 hours.” without searching; Tulsa weather retrieved fresh model data and answered “It is currently 70°F in Tulsa, with a feels-like temperature of 76°F and high humidity.” No source list or warnings. Production build passed. Older validation sections below are historical and their quote-gate/source-warning behavior is superseded by this section.
+
 The portable React/TypeScript PWA, schema-v1 local storage and provider-neutral ChatProvider remain the foundation. The new chat-service orchestrates device context, optional retrieval and local inference. Existing Swift reference code is unchanged.
 
 ## Behavior and privacy

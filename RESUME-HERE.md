@@ -1,3 +1,7 @@
+# Current routing checkpoint
+
+Keep codex/cross-platform-foundation; do not push or merge. Latest owner request supersedes prior quote validation and source-warning UX: ordinary/stable questions go directly to local Qwen/Ollama; only live information or explicit search uses retrieval. Natural streamed replies, sources only when asked, no validation refusals or automatic warnings. Search settings retain Off and web preference; legacy Always values no longer force ordinary queries online. Clock/privacy/free bounded retrieval remain. 57 Mac regressions passed; final owner examples passed (Oklahoma City, 3 hours, current Tulsa weather). Read current docs/LOCAL-FIRST-CHAT.md section; earlier entries are historical.
+
 # Current conversational-answer checkpoint
 
 Remain on codex/cross-platform-foundation. The user forbids push/merge. Latest changes implement locally generated cited conversational sentences with exact quote/source validation, conservative news/name/number checks, one repair and partial supported-sentence retention. All 60 Mac checks passed (46 unit/HTTP + 14 live), production build passed. Read docs/LIVE-CHAT-VALIDATION.md for 12 live retrieval questions and honest limitations: prices/comparisons often absent, broad research snippets inadequate, no complete-page fetching. Weather/news sources and Qwen/Ollama remain free/local-first. Semantic validation reduces risk but does not formally prove every paraphrase.

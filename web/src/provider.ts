@@ -1,6 +1,6 @@
 import type { DeviceContext } from './device-context';
 import type { SearchEvidence } from './search';
-export interface ChatRequest { prompt: string; device?: DeviceContext; evidence?: SearchEvidence; responseKind?: 'source-selection' | 'grounded-answer' }
+export interface ChatRequest { prompt: string; device?: DeviceContext; evidence?: SearchEvidence; showSources?: boolean; responseKind?: 'source-selection' | 'grounded-answer' }
 export interface ProviderStatus {
   phase: 'idle' | 'loading' | 'ready' | 'error';
   message: string;

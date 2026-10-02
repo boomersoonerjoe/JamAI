@@ -1,3 +1,10 @@
+# Latest fix: direct local routing and clean retrieved replies, 2026-10-01
+
+- Narrowed search triggers: normal conversation, math, general knowledge and conceptual research/comparisons stay local, even with saved legacy Always settings. Live/current questions and explicit search requests use retrieval; Off/device-clock behavior retained.
+- Retrieved answers now stream normal local-model prose. Removed quote-validation/repair refusals, automatic warnings and default citations/source lists. Sources are opt-in per question. Safe URLs, bounded free retrieval and private local context remain unchanged.
+- Mac: 57 regression checks passed; final exact-example rerun passed all three. Capital → Oklahoma City/no search; driving math → 3 hours/no search; Tulsa right-now weather → retrieved data and concise natural answer/no source list or disclaimer. Production build passed. UI verified source-free weather prose.
+- Work stays local on codex/cross-platform-foundation; no push or merge. Earlier quote-gate checkpoints below are historical.
+
 # Latest checkpoint: conversational retrieved answers, 2026-10-01
 
 - Local Qwen/Ollama now writes short cited conversational prose instead of only exact extractive lists. Structured sentences include exact supporting quotes; the app checks citations, quotes, numbers, names and conservative news wording/tense before publishing. One repair attempt is allowed; individually unsupported sentences are discarded when supported ones remain. Unique quote matches correct citation misnumbering; ambiguous matches fail closed. Semantic screening is conservative, not a formal no-hallucination guarantee.

@@ -1,3 +1,4 @@
+import { wantsSources } from './search';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
@@ -99,7 +100,7 @@ function App() {
     <section className="search-settings">
       <label>Internet search <select aria-label="Internet search" disabled={busy} value={searchMode} onChange={e => {
         const next = e.target.value as SearchMode; localStorage.setItem('nhomeai.search-mode.v1', next); setSearchMode(next);
-      }}><option value="auto">Auto · current-information questions</option><option value="always">Always · automatic sources</option><option value="web">Always · general web</option><option value="off">Off · offline only</option></select></label>
+      }}><option value="auto">Auto · current-information questions</option><option value="always">Auto · prefer news sources</option><option value="web">Auto · prefer general web</option><option value="off">Off · offline only</option></select></label>
       <p>Free search sends this message’s search query to free web search sites (Bing/Brave) or news RSS; weather requests may use free Open-Meteo. Saved notes and other chat turns stay local. AI processing stays on your device. Search can fail or be incomplete; current facts require retrieved evidence.</p>
       {activity && <div role="status" aria-live="polite">{activity}</div>}
     </section>
@@ -108,11 +109,11 @@ function App() {
       {data.conversations.map(c => <button disabled={busy} className="chat" aria-pressed={active === c.id} onClick={() => { setActive(c.id); setRetry(undefined); setError(''); }} key={c.id}>{c.title}</button>)}
     </aside><article>
       {current ? <>
-        <div className="messages" aria-label="Conversation">{current.messages.map(m => <div key={m.id} className={m.role}><small>{m.role === 'user' ? 'You' : 'NhomeAI'}</small><div>{m.text}</div>{m.evidence && <div className="sources">
-          <small>{m.evidence.provider} · retrieved {new Date(m.evidence.fetchedAt).toLocaleString()} · {m.evidence.scope === 'today' ? `publication dates matched the device's local day (${m.evidence.timeZone})` : m.evidence.scope === 'weather' ? 'current model-based weather; not a station observation' : 'results may be incomplete or outdated'}.</small>
+        <div className="messages" aria-label="Conversation">{current.messages.map((m, index) => <div key={m.id} className={m.role}><small>{m.role === 'user' ? 'You' : 'NhomeAI'}</small><div>{m.text}</div>{m.evidence && wantsSources(current.messages[index - 1]?.text ?? '') && <div className="sources">
+          <small>{m.evidence.provider}</small>
           <ol>{m.evidence.sources.filter(source => safeSourceURL(source.url)).map((source, index) => <li key={source.url}>
             <a href={source.url} target="_blank" rel="noopener noreferrer">[{index + 1}] {source.title}</a>
-            <small>{source.publisher}{source.publishedAt ? ` · published ${new Date(source.publishedAt).toLocaleString()}` : ' · publication date not verified'}</small>
+            <small>{source.publisher}{source.publishedAt ? ` · published ${new Date(source.publishedAt).toLocaleString()}` : ''}</small>
           </li>)}</ol>
           <details><summary>Retrieved excerpts · not full articles</summary>{m.evidence.sources.map((source, index) => <p key={source.url}>[{index + 1}] {source.excerpt}</p>)}</details>
         </div>}</div>)}</div>
