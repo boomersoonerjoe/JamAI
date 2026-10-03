@@ -1,3 +1,5 @@
+import { planRetrieval } from './retrieval-plan';
+import type { DeviceContext } from './device-context';
 import { systemInstructions, inferencePrompt } from './inference-context';
 import type { ChatProvider, ChatRequest, ProviderStatus } from './provider';
 
@@ -34,6 +36,9 @@ export class OllamaChatProvider implements ChatProvider {
       throw new Error(message);
     }
   }
+  planRetrieval(question: string, device: DeviceContext, signal: AbortSignal) {
+    return planRetrieval(this, question, device, signal);
+  }
   async generate(request: ChatRequest, onUpdate: (text: string) => void, signal: AbortSignal) {
     if (!this.ready) throw new Error('Connect to local Ollama first.');
     if (this.generating) throw new Error('A response is already running.');
@@ -41,28 +46,34 @@ export class OllamaChatProvider implements ChatProvider {
     this.generating = true;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     try {
-      const response = await this.request(`${ENDPOINT}/api/chat`, {
+      const retrieval = !!request.responseKind || !!request.evidence;
+      const escape = (text: string) => text.replace(/<\|[^>]*\|>|<\/?think>/g,'');
+      const response = await this.request(`${ENDPOINT}/api/${retrieval ? 'generate' : 'chat'}`, {
         method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MAC_MODEL, stream: true, think: false, keep_alive: '2m',
+        body: JSON.stringify({ model: MAC_MODEL, stream: true, think: !!request.reasoning, keep_alive: '2m',
           ...(request.responseKind ? { format: {
-            ...(request.responseKind === 'grounded-answer' ? { type: 'object', properties: { sentences: { type: 'array', maxItems: 3, items: { type: 'object', properties: { text: { type: 'string' }, source: { type: 'integer' }, quote: { type: 'string' } }, required: ['text','source','quote'], additionalProperties: false } } }, required: ['sentences'], additionalProperties: false } : { type: 'object', properties: { selected: { type: 'array', items: { type: 'integer' }, maxItems: 4 } }, required: ['selected'], additionalProperties: false }),
+            ...(request.responseKind === 'retrieval-plan' ? {type:'object',properties:{retrieve:{type:'boolean'},kind:{type:'string',enum:['web','news','weather']},intent:{type:'string',enum:['product-price','sale-event','other']},queries:{type:'array',items:{type:'string'},maxItems:2},terms:{type:'array',items:{type:'string'},maxItems:5}},required:['retrieve','kind','intent','queries','terms'],additionalProperties:false} : request.responseKind === 'grounded-answer' ? { type: 'object', properties: { sentences: { type: 'array', maxItems: 3, items: { type: 'object', properties: { text: { type: 'string' }, source: { type: 'integer' }, quote: { type: 'string' } }, required: ['text','source','quote'], additionalProperties: false } } }, required: ['sentences'], additionalProperties: false } : { type: 'object', properties: { selected: { type: 'array', items: { type: 'integer' }, maxItems: 4 } }, required: ['selected'], additionalProperties: false }),
           } } : {}),
-          messages: [
+          ...(retrieval ? {raw:true,prompt:`<|im_start|>system\n${escape(systemInstructions(request))}<|im_end|>\n<|im_start|>user\n${escape(inferencePrompt(request))}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n`} : {messages: [
             { role: 'system', content: systemInstructions(request) },
             { role: 'user', content: inferencePrompt(request) },
-          ], options: { num_ctx: 4096, num_predict: 512, temperature: request.responseKind || request.evidence ? 0 : 0.6 } }),
+          ]}), options: { ...(retrieval ? {stop:['<|im_end|>','<|endoftext|>']} : {}), num_ctx: retrieval ? 8192 : 4096, num_predict: request.responseKind === 'retrieval-plan' ? 512 : request.reasoning ? 2048 : request.evidence ? 768 : 512, temperature: request.responseKind || request.evidence || request.reasoning ? 0 : 0.6 } }),
       });
       if (!response.ok) throw new Error(`Local Ollama returned HTTP ${response.status}. Check that the model is installed.`);
       if (!response.body) throw new Error('Ollama returned no response stream.');
       reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '', text = '', done = false;
+      let reasoningCharacters = 0, completionReason = '';
       const consume = (line: string) => {
         if (!line.trim()) return;
-        const chunk = JSON.parse(line) as { error?: string; message?: { content?: string }; done?: boolean };
+        const chunk = JSON.parse(line) as { error?: string; message?: { content?: string; thinking?: string }; done?: boolean; done_reason?: string; response?: string; thinking?: string };
         if (chunk.error) throw new Error(chunk.error);
-        text += chunk.message?.content ?? '';
-        if (chunk.message?.content) onUpdate(text);
+        const content = chunk.response ?? chunk.message?.content ?? '';
+        text += content;
+        reasoningCharacters += (chunk.thinking ?? chunk.message?.thinking)?.length ?? 0;
+        completionReason = chunk.done_reason ?? completionReason;
+        if (content) onUpdate(text);
         if (chunk.done) done = true;
       };
       while (!done) {
@@ -78,7 +89,7 @@ export class OllamaChatProvider implements ChatProvider {
       }
       signal.throwIfAborted();
       if (!done) throw new Error('Local response stream ended early. Retry the response.');
-      if (!text.trim()) throw new Error('The local model returned no text. Retry the response.');
+      if (!text.trim()) throw new Error(`The local model returned no text (${completionReason || 'unknown completion'}, ${reasoningCharacters} reasoning characters). Retry the response.`);
       return text;
     } finally {
       try { await reader?.cancel(); } finally { reader?.releaseLock(); this.generating = false; }

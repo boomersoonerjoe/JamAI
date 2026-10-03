@@ -3,14 +3,14 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { retrieveArticle, articleURL } from './article-service.mjs';
-import { retrieveSearch, validateSearch } from './search-service.mjs';
+import { validateCoordinates, devicePlace, retrieveSearch, validateSearch } from './search-service.mjs';
 
 const ROOT = fileURLToPath(new URL('../dist/', import.meta.url));
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.wasm': 'application/wasm', '.png': 'image/png', '.svg': 'image/svg+xml' };
 function json(response, status, data) {
   response.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }); response.end(JSON.stringify(data));
 }
-export function makeServer(search = retrieveSearch, article = retrieveArticle) {
+export function makeServer(search = retrieveSearch, article = retrieveArticle, locate = devicePlace) {
   return createServer(async (request, response) => {
     const host = request.headers.host || '';
     const origin = request.headers.origin;
@@ -18,7 +18,7 @@ export function makeServer(search = retrieveSearch, article = retrieveArticle) {
     if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host) || (origin && !/^http:\/\/(127\.0\.0\.1|localhost):(4173|5173)$/.test(origin))) return json(response, 403, { error: 'Only the local NhomeAI origin is permitted.' });
     let path;
     try { path = new URL(request.url, `http://${host}`).pathname; } catch { return json(response, 400, { error: 'Invalid URL.' }); }
-    if (path === '/api/search' || path === '/api/article') {
+    if (path === '/api/search' || path === '/api/article' || path === '/api/location') {
       if (request.method !== 'POST') return json(response, 405, { error: 'Use POST for search.' });
       if (request.headers['content-type']?.split(';')[0] !== 'application/json') return json(response, 415, { error: 'Search requires JSON.' });
       const controller = new AbortController();
@@ -31,9 +31,9 @@ export function makeServer(search = retrieveSearch, article = retrieveArticle) {
           chunks.push(chunk);
         }
         let input;
-        try { const body = JSON.parse(Buffer.concat(chunks).toString('utf8')); input = path === '/api/article' ? articleURL(body.url).href : validateSearch(body); }
+        try { const body = JSON.parse(Buffer.concat(chunks).toString('utf8')); input = path === '/api/article' ? articleURL(body.url).href : path === '/api/location' ? validateCoordinates(body.coordinates) : validateSearch(body); if (path === '/api/location' && !input) throw new Error('Missing coordinates'); }
         catch { return json(response, 400, { error: 'Invalid search query, date, time zone or mode.' }); }
-        const result = await (path === '/api/article' ? article : search)(input, controller.signal);
+        const result = path === '/api/location' ? {place:await locate(input,controller.signal)} : await (path === '/api/article' ? article : search)(input, controller.signal);
         if (!controller.signal.aborted) json(response, 200, result);
       } catch (error) {
         if (!controller.signal.aborted && !response.destroyed) json(response, 503, { error: error instanceof Error ? error.message : 'Free search is unavailable.' });

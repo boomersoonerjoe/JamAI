@@ -1,3 +1,5 @@
+import { planRetrieval } from './retrieval-plan';
+import type { DeviceContext } from './device-context';
 import { systemInstructions, inferencePrompt } from './inference-context';
 import type { ChatProvider, ChatRequest, ProviderStatus } from './provider';
 import type { WebWorkerMLCEngine } from '@mlc-ai/web-llm';
@@ -61,6 +63,9 @@ export class LocalChatProvider implements ChatProvider {
     })();
     return this.loading;
   }
+  planRetrieval(question: string, device: DeviceContext, signal: AbortSignal) {
+    return planRetrieval(this, question, device, signal);
+  }
   async generate(request: ChatRequest, onUpdate: (text: string) => void, signal: AbortSignal): Promise<string> {
     if (!this.runtime) throw new Error('Load the local model first.');
     if (this.generating) throw new Error('A response is already running.');
@@ -76,8 +81,8 @@ export class LocalChatProvider implements ChatProvider {
       const chunks = await engine.chat.completions.create({
         messages: [
           { role: 'system', content: systemInstructions(request) },
-          { role: 'user', content: inferencePrompt(request) },
-        ], stream: true, max_tokens: 256, temperature: request.evidence ? 0 : 0.6,
+          { role: 'user', content: inferencePrompt(request,3000) },
+        ], stream: true, max_tokens: 256, temperature: request.evidence || request.responseKind ? 0 : 0.6,
       });
       let text = '';
       for await (const chunk of chunks) {

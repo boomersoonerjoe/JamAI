@@ -76,9 +76,9 @@ describe('bounded portable context', () => {
     const prompt = buildPrompt({ id: 'c', title: 'test', messages: [
       { id: '1', text: 'Remember 7429', role: 'user', createdAt: '' },
       { id: '2', text: 'OK', role: 'assistant', createdAt: '' },
-      { id: '3', text: 'What number?', role: 'user', createdAt: '' },
+      { id: '3', text: 'What number and what is my name?', role: 'user', createdAt: '' },
     ] }, [{ id: 'm', text: 'My name is Joe' }]);
-    expect(prompt).toContain('7429'); expect(prompt).toContain('My name is Joe'); expect(prompt).toContain('What number?');
+    expect(prompt).toContain('7429'); expect(prompt).toContain('My name is Joe'); expect(prompt).toContain('What number and what is my name?');
   });
   it('limits UTF-8 input size and excludes excessive old history', () => {
     const message = { id: '1', text: '🙂'.repeat(301), role: 'user' as const, createdAt: '' };

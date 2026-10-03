@@ -34,6 +34,14 @@ describe('offline device clock', () => {
 });
 
 describe('local-first routing and natural replies', () => {
+  it('keeps supplied-price arithmetic local while retaining real price searches', async () => {
+    const s = setup('$99');
+    const question = 'A store discounts a $120 item by 25%, then adds 10% sales tax. What is the final price? Explain briefly.';
+    await answerConversation(conversation(question), [], s.provider, s.options);
+    expect(s.search).not.toHaveBeenCalled(); expect(s.generate).toHaveBeenCalledOnce(); expect(s.generate.mock.calls[0][0].reasoning).toBe(true);
+    expect(needsCurrentInformation('MacBook Air current price')).toBe(true);
+    expect(needsCurrentInformation('Search a $120 item with a 25% discount')).toBe(true);
+  });
   it('answers ordinary questions through the local model in every enabled mode', async () => {
     for (const question of ['What is the capital of Oklahoma?', 'If I drive 180 miles at 60 mph, how long will it take?', 'Who is Shakespeare?', 'Compare cats and dogs', 'Research solar panel efficiency', 'How does weather forecasting work?', 'What is the stock market?', 'Tell me a joke', 'What is electric current?', 'Help me describe my current mood', 'What is price elasticity?', 'Explain weather forecasting']) {
       expect(needsCurrentInformation(question),question).toBe(false);
@@ -104,4 +112,60 @@ it('recalls an explicit article reference across unrelated turns without reusing
  const s=setup();const c=conversation('What did that article say?');c.messages.unshift({id:'source',role:'assistant',text:'A news story.',createdAt:'',evidence:{...evidence,sources:evidence.sources.map(source=>({...source,article:{status:'retrieved' as const,text:'Saved story text.',url:source.url,fetchedAt:clock().isoTime}}))}},{id:'math',role:'assistant',text:'3 hours.',createdAt:''});
  await answerConversation(c,[],s.provider,{...s.options,mode:'off'});expect(s.generate.mock.calls.at(-1)![0].recalled).toBe(true);
  c.messages.at(-1)!.text='Tell me more';await answerConversation(c,[],s.provider,s.options);expect(s.generate.mock.calls.at(-1)![0].evidence).toBeUndefined();
+});
+
+
+describe('Auto current-information regression coverage', () => {
+  const questions = [
+    'Are there any sales currently going on at Best Buy for Ring cameras?',
+    'Are Ring cameras on sale at Best Buy?',
+    'Does Best Buy have any discounts on Ring cameras?',
+    'How much does a Ring camera cost at Best Buy?',
+    'What is the price of a Ring camera?',
+    'Is the Ring Battery Doorbell in stock?',
+    'Compare the best cameras to buy',
+    'What are the specs for the Ring Battery Doorbell?',
+    'What new Ring products are available this year?',
+    'What happened in the news today?',
+    'What were the election results yesterday?',
+    'What are the current events in France?',
+    'Will it rain in Tulsa tomorrow?',
+    'What is the forecast for Tulsa?',
+    'What is the latest Firefox release?',
+    'What are mortgage interest rates?',
+    'What is the exchange rate for dollars to euros?',
+    'What is the status of flight AA123?',
+    'What are the current travel rules for Japan?',
+    'Who is the CEO of Best Buy?',
+    'What time does the concert start today?',
+  ];
+  it.each(questions)('retrieves before generating for: %s', async question => {
+    const s = setup();
+    expect(needsCurrentInformation(question)).toBe(true);
+    const result = await answerConversation(conversation(question), [], s.provider, s.options);
+    expect(s.search).toHaveBeenCalledExactlyOnceWith(question, clock(), s.options.signal, undefined, undefined);
+    expect(s.search.mock.invocationCallOrder[0]).toBeLessThan(s.generate.mock.invocationCallOrder[0]);
+    expect(s.generate.mock.calls[0][0].evidence).toEqual(evidence);
+    expect(result.evidence).toEqual(evidence);
+  });
+  it.each([
+    'Explain how sales tax works', 'What are sales?', 'Define discounts',
+    'What is an exchange rate?', 'What is inflation?',
+    'What were Ring camera prices in 2020?', 'What was the weather in Tulsa in 1900?',
+    'Explain the history of elections', 'Help me describe my current mood',
+    'A camera costs $100 with a 20% discount. Calculate the price.',
+  ])('preserves local routing for: %s', async question => {
+    const s = setup();
+    expect(needsCurrentInformation(question)).toBe(false);
+    await answerConversation(conversation(question), [], s.provider, s.options);
+    expect(s.search).not.toHaveBeenCalled();
+    expect(s.generate).toHaveBeenCalledOnce();
+  });
+  it('respects Off for the reported sales question', async () => {
+    const s = setup();
+    const result = await answerConversation(conversation(questions[0]), [], s.provider, {...s.options, mode:'off'});
+    expect(s.search).not.toHaveBeenCalled();
+    expect(s.generate).not.toHaveBeenCalled();
+    expect(result.retryable).toBe(true);
+  });
 });

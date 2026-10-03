@@ -36,3 +36,13 @@ it.skipIf(!enabled)('stops real inference and successfully generates a fresh req
   expect(retry).toContain('Cedar');
   console.log(JSON.stringify({ cancellationAndRetry: retry }));
 }, 240000);
+
+it.skipIf(!enabled)('checks multi-step arithmetic with local reasoning rather than price search', async () => {
+  const { answerConversation } = await import('./chat-service');
+  const provider = new OllamaChatProvider(); await provider.prepare(() => {});
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const result = await answerConversation({id:crypto.randomUUID(),title:'Arithmetic',messages:[{id:'q',role:'user',createdAt:'',text:'A store discounts a $120 item by 25%, then adds 10% sales tax. What is the final price? Explain briefly.'}]},[],provider,{mode:'auto',signal:AbortSignal.timeout(120000),onUpdate(){},onActivity(){},search:async()=>{throw new Error('Arithmetic must not search');}});
+    expect(result.text).toMatch(/\$?99\b/); expect(result.text).not.toMatch(/\$93\b/);
+    console.log(JSON.stringify({arithmeticAttempt:attempt+1,answer:result.text}));
+  }
+}, 240000);
