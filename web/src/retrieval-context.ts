@@ -28,3 +28,17 @@ export function articleContext(text: string, question: string) {
   if (!relevant.length) return text.slice(0,4000);
   return `${text.slice(0,600)}\n[Selected saved article passages]\n${relevant.map(c=>c.content).join('\n[…]\n')}`.slice(0,4000);
 }
+
+// Only prior turns that already participated in public retrieval are eligible.
+// Personal notes and unrelated local chat are never supplied for search planning.
+export function publicTopicContext(conversation:Conversation) {
+ const question=conversation.messages.at(-1)!.text;
+ if(!/\b(?:what about|how about|instead|during|that|those|these|it|same|didn[’']t ask|i asked|what else|any others)\b/i.test(question))return;
+ const pairs:{question:string;topic:string;intent?:SearchEvidence['retrievalIntent'];subject?:string}[]=[];
+ for(let i=0;i<conversation.messages.length-1;i++) {
+  const user=conversation.messages[i],reply=conversation.messages[i+1];
+  if(user.role==='user' && reply?.role==='assistant' && reply.evidence)pairs.push({question:user.text.slice(0,1000),topic:reply.evidence.query.slice(0,1000),intent:reply.evidence.retrievalIntent,subject:reply.evidence.shoppingSubject});
+ }
+ if(!pairs.length)return;
+ return {questions:pairs.slice(-2).map(pair=>pair.question),topic:pairs.at(-1)!.topic,intent:pairs.at(-1)!.intent,subject:pairs.at(-1)!.subject};
+}

@@ -25,6 +25,7 @@ export function localRequest(question: string) {
   return /\b(?:weather|forecast|temperature|rain)\b/i.test(q) && !/\b(?:explain|how does|how do|what is (?:a |the )?(?:weather|forecast|temperature|rain)\??$|history|historical|in \d{4})\b/i.test(q);
 }
 export function explicitPlace(question: string) {
+  question = question.replace(/^(?:current|today(?:['’]s)?|tomorrow(?:['’]s)?)\s+/i, '');
   return /\b(?:weather|forecast|temperature|rain)\s+(?:in|for|at)\s+(?!my (?:area|location)\b|here\b|my place\b)[\p{L}]/iu.test(question) || /\b(?:nearby|near me|around me)\b.*\b(?:in|at)\s+[\p{L}]/iu.test(question) || /\b(?:in|at)\s+[\p{L}].*\b(?:weather|forecast|nearby)\b/iu.test(question) || /^(?!what|how|is|will|the|current|today|local|show|tell|give)(?:[\p{L}]+[, ]+){1,4}(?:weather|forecast)\b/iu.test(question);
 }
 export async function resolveLocation(c: Conversation, memories: MemoryNote[], manual: string, provider: LocationProvider | undefined, signal: AbortSignal): Promise<UserLocation | undefined> {

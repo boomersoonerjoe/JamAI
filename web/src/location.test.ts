@@ -34,6 +34,8 @@ describe('location context and user control',()=>{
   expect(locatedQuery('Find coffee shops near me. Give me a short answer.',{source:'saved',place:'Tulsa, OK'})).toBe('Find coffee shops nearby in Tulsa, OK');
   expect(localRequest('How does weather forecasting work?')).toBe(false);
   expect(explicitPlace('Tulsa weather right now')).toBe(true);
+  expect(explicitPlace('current tulsa weather')).toBe(true);
+  expect(explicitPlace('current weather outside')).toBe(false);
  });
  it('uses saved memory across chats and manual settings after restart; denied auto falls back',async()=>{
   const denied={current:vi.fn(async()=>undefined)};

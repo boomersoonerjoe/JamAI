@@ -1,15 +1,17 @@
-import { planRetrieval } from './retrieval-plan';
+import { planRetrieval,type RetrievalTopicContext } from './retrieval-plan';
 import type { DeviceContext } from './device-context';
 import { systemInstructions, inferencePrompt } from './inference-context';
 import type { ChatProvider, ChatRequest, ProviderStatus } from './provider';
 
-export const MAC_MODEL = 'qwen3.5:4b-q4_K_M';
+export const MAC_MODEL = 'huihui_ai/qwen3-abliterated:8b-v2-q4_K_M';
+export const MAC_CONTEXT = 8192;
+export const MAC_KEEP_ALIVE = '10m';
 const ENDPOINT = 'http://127.0.0.1:11434';
 
 // Loopback only: this adapter never sends prompts to a LAN or cloud endpoint.
 export class OllamaChatProvider implements ChatProvider {
   readonly id = 'ollama';
-  readonly name = 'Qwen3.5 4B · Q4_K_M · local Ollama';
+  readonly name = 'Huihui Qwen3 8B Abliterated v2 · Q4_K_M · local Ollama';
   private ready = false;
   private generating = false;
   constructor(private request: typeof fetch = globalThis.fetch.bind(globalThis)) {}
@@ -27,6 +29,14 @@ export class OllamaChatProvider implements ChatProvider {
     report({ phase: 'loading', message: 'Checking local Ollama and installed model…' });
     try {
       if (!(await this.models()).includes(MAC_MODEL)) throw new Error(`Install the model first: ollama pull ${MAC_MODEL}`);
+      report({ phase: 'loading', message: 'Warming the local model…' });
+      const warm = await this.request(`${ENDPOINT}/api/generate`, {
+        method: 'POST', signal: AbortSignal.timeout(60000), headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: MAC_MODEL, stream: false, keep_alive: MAC_KEEP_ALIVE, options: { num_ctx: MAC_CONTEXT } }),
+      });
+      if (!warm.ok) throw new Error(`Local model warm-up returned HTTP ${warm.status}.`);
+      const result = await warm.json() as { error?: string };
+      if (result.error) throw new Error(result.error);
       this.ready = true;
       report({ phase: 'ready', message: 'Ready · replies run on this computer through local Ollama' });
     } catch (error) {
@@ -36,8 +46,8 @@ export class OllamaChatProvider implements ChatProvider {
       throw new Error(message);
     }
   }
-  planRetrieval(question: string, device: DeviceContext, signal: AbortSignal) {
-    return planRetrieval(this, question, device, signal);
+  planRetrieval(question: string, device: DeviceContext, signal: AbortSignal,context?:RetrievalTopicContext) {
+    return planRetrieval(this, question, device, signal,context);
   }
   async generate(request: ChatRequest, onUpdate: (text: string) => void, signal: AbortSignal) {
     if (!this.ready) throw new Error('Connect to local Ollama first.');
@@ -50,14 +60,14 @@ export class OllamaChatProvider implements ChatProvider {
       const escape = (text: string) => text.replace(/<\|[^>]*\|>|<\/?think>/g,'');
       const response = await this.request(`${ENDPOINT}/api/${retrieval ? 'generate' : 'chat'}`, {
         method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MAC_MODEL, stream: true, think: !!request.reasoning, keep_alive: '2m',
+        body: JSON.stringify({ model: MAC_MODEL, stream: true, think: !!request.reasoning, keep_alive: MAC_KEEP_ALIVE,
           ...(request.responseKind ? { format: {
-            ...(request.responseKind === 'retrieval-plan' ? {type:'object',properties:{retrieve:{type:'boolean'},kind:{type:'string',enum:['web','news','weather']},intent:{type:'string',enum:['product-price','sale-event','other']},queries:{type:'array',items:{type:'string'},maxItems:2},terms:{type:'array',items:{type:'string'},maxItems:5}},required:['retrieve','kind','intent','queries','terms'],additionalProperties:false} : request.responseKind === 'grounded-answer' ? { type: 'object', properties: { sentences: { type: 'array', maxItems: 3, items: { type: 'object', properties: { text: { type: 'string' }, source: { type: 'integer' }, quote: { type: 'string' } }, required: ['text','source','quote'], additionalProperties: false } } }, required: ['sentences'], additionalProperties: false } : { type: 'object', properties: { selected: { type: 'array', items: { type: 'integer' }, maxItems: 4 } }, required: ['selected'], additionalProperties: false }),
+            ...(request.responseKind === 'retrieval-plan' ? {type:'object',properties:{subject:{type:'string'},resolvedQuestion:{type:'string'},retrieve:{type:'boolean'},kind:{type:'string',enum:['web','news','weather']},intent:{type:'string',enum:['product-price','deal-discovery','sale-event','other']},queries:{type:'array',items:{type:'string'},maxItems:2},terms:{type:'array',items:{type:'string'},maxItems:5}},required:['subject','resolvedQuestion','retrieve','kind','intent','queries','terms'],additionalProperties:false} : request.responseKind === 'grounded-answer' ? { type: 'object', properties: { sentences: { type: 'array', maxItems: 3, items: { type: 'object', properties: { text: { type: 'string' }, source: { type: 'integer' }, quote: { type: 'string' } }, required: ['text','source','quote'], additionalProperties: false } } }, required: ['sentences'], additionalProperties: false } : { type: 'object', properties: { selected: { type: 'array', items: { type: 'integer' }, maxItems: 4 } }, required: ['selected'], additionalProperties: false }),
           } } : {}),
           ...(retrieval ? {raw:true,prompt:`<|im_start|>system\n${escape(systemInstructions(request))}<|im_end|>\n<|im_start|>user\n${escape(inferencePrompt(request))}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n`} : {messages: [
             { role: 'system', content: systemInstructions(request) },
             { role: 'user', content: inferencePrompt(request) },
-          ]}), options: { ...(retrieval ? {stop:['<|im_end|>','<|endoftext|>']} : {}), num_ctx: retrieval ? 8192 : 4096, num_predict: request.responseKind === 'retrieval-plan' ? 512 : request.reasoning ? 2048 : request.evidence ? 768 : 512, temperature: request.responseKind || request.evidence || request.reasoning ? 0 : 0.6 } }),
+          ]}), options: { ...(retrieval ? {stop:['<|im_end|>','<|endoftext|>']} : {}), num_ctx: MAC_CONTEXT, num_predict: request.responseKind === 'retrieval-plan' ? 512 : request.reasoning ? 2048 : request.evidence ? 768 : 512, temperature: request.responseKind || request.evidence || request.reasoning ? 0 : 0.6 } }),
       });
       if (!response.ok) throw new Error(`Local Ollama returned HTTP ${response.status}. Check that the model is installed.`);
       if (!response.body) throw new Error('Ollama returned no response stream.');

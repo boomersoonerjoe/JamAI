@@ -1,6 +1,6 @@
 import { request as httpRequest } from 'node:http';
-import { it, expect } from 'vitest';
-import { parseResults, retrieveSearch, validateSearch, newsSearchQuery, parseWebHTML, retrieveWeb, webSearchQuery, weatherLocation, matchesWeatherLocation, retrieveCurrentWeather, relevantWebSource, purchasePriceScore, rankWebSources } from '../scripts/search-service.mjs';
+import { it, expect, vi } from 'vitest';
+import { parseResults, retrieveSearch, validateSearch, newsSearchQuery, parseWebHTML, retrieveWeb, webSearchQuery, weatherLocation, matchesWeatherLocation, retrieveCurrentWeather, relevantWebSource, purchasePriceScore, rankWebSources, weatherTemperatureUnit } from '../scripts/search-service.mjs';
 import { makeServer } from '../scripts/server.mjs';
 const request = { query: 'Tulsa news today', kind: 'news', today: true, day: '2026-10-01', timeZone: 'America/Chicago' };
 const now = new Date('2026-10-02T04:30:00Z');
@@ -48,7 +48,7 @@ it('enforces loopback origins, JSON/body limits, search errors and traversal gua
     expect((await send({ Origin: 'https://evil.example' })).status).toBe(403);
     const badHost = await new Promise((resolve, reject) => { const r = httpRequest(base + '/api/search', { headers: { Host: 'evil.example' } }, res => { res.resume(); resolve(res.statusCode); }); r.on('error', reject); r.end(); });
     expect(badHost).toBe(403);
-    const offline = await send({ Origin: 'http://127.0.0.1:4173' }); expect(offline.status).toBe(503); expect(await offline.json()).toEqual({ error: 'Offline fixture' });
+    const offline = await send({ Origin: 'http://127.0.0.1:4173' }); expect(offline.status).toBe(503); expect(await offline.json()).toEqual({ error: 'Offline fixture',code:'RETRIEVAL_FAILED' });
     expect((await fetch(base + '/api/search')).status).toBe(405);
     expect((await fetch(base + '/api/search', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: '{}' })).status).toBe(415);
     expect((await fetch(base + '/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'x'.repeat(5000) })).status).toBe(413);
@@ -95,7 +95,7 @@ it('normalizes research and comparison commands into subject-first search querie
 });
 it('fails explicitly when all public engines are unavailable and ignores arbitrary upstream parameters', async () => {
   const calls = [];
-  await expect(retrieveWeb({...request, kind:'web', url:'http://127.0.0.1/private'},new AbortController().signal,async url => { calls.push(url.hostname); return new Response('Unavailable',{status:429}); },now)).rejects.toThrow('unavailable');
+  await expect(retrieveWeb({...request, kind:'web', url:'http://127.0.0.1/private'},new AbortController().signal,async url => { calls.push(url.hostname); return new Response('Unavailable',{status:429}); },now)).rejects.toMatchObject({code:'SEARCH_PROVIDER_FAILURE'});
   expect(calls).toEqual(['html.duckduckgo.com','search.brave.com','www.bing.com','www.bing.com']);
 });
 
@@ -129,17 +129,17 @@ it('discards Waxahachie weather and preserves important details on every retry',
   expect(calls.every(value => value.includes('current Tulsa weather'))).toBe(true);
 });
 
-it('resolves exact weather city/state, preserves Celsius and rejects stale/wrong-city API data', async () => {
+it('resolves exact weather city/state, uses Fahrenheit for the U.S. and rejects stale/wrong-city API data', async () => {
   const place = {name:'Tulsa',admin1:'Oklahoma',country:'United States',country_code:'US',population:400000,latitude:36.15,longitude:-95.99};
-  const c = {time:now.getTime()/1000,temperature_2m:20,apparent_temperature:19,relative_humidity_2m:50,wind_speed_10m:10};
-  const u = {temperature_2m:'°C',apparent_temperature:'°C',relative_humidity_2m:'%',wind_speed_10m:'km/h'};
+  const c = {time:now.getTime()/1000,temperature_2m:68,apparent_temperature:66.2,relative_humidity_2m:50,wind_speed_10m:10};
+  const u = {temperature_2m:'°F',apparent_temperature:'°F',relative_humidity_2m:'%',wind_speed_10m:'mp/h'};
   const fetcher = async url => {
     if (url.hostname === 'geocoding-api.open-meteo.com') { expect(url.searchParams.get('name')).toBe('Tulsa'); return new Response(JSON.stringify({results:[place]})); }
-    expect(url.searchParams.get('temperature_unit')).toBe('celsius');
+    expect(url.searchParams.get('temperature_unit')).toBe('fahrenheit');
     return new Response(JSON.stringify({current:c,current_units:u}));
   };
   const data = await retrieveCurrentWeather({...request,query:'current Tulsa, OK weather in Celsius'},'Tulsa, OK',new AbortController().signal,fetcher,now);
-  expect(data.sources[0].excerpt).toContain('Tulsa, Oklahoma'); expect(data.sources[0].excerpt).toContain('20°C');
+  expect(data.sources[0].excerpt).toContain('Tulsa, Oklahoma'); expect(data.sources[0].excerpt).toContain('68°F');
   await expect(retrieveCurrentWeather(request,'Tulsa, TX',new AbortController().signal,fetcher,now)).rejects.toThrow('location');
   await expect(retrieveCurrentWeather(request,'Tulsa',new AbortController().signal,async url => new Response(JSON.stringify(url.hostname.includes('geocoding') ? {results:[place]} : {current:{...c,time:c.time-10000},current_units:u})),now)).rejects.toThrow('stale');
 });
@@ -174,10 +174,12 @@ it('validates device coordinates and retrieves weather without city/time-zone ge
  for(const coordinates of [{latitude:91,longitude:0},{latitude:0,longitude:181},{latitude:'36',longitude:0},{latitude:NaN,longitude:0}]) expect(()=>validateSearch({...r,coordinates})).toThrow('coordinates');
  const calls=[];
  const data=await retrieveWeb(r,new AbortController().signal,async url=>{
-  calls.push(url.href);expect(url.hostname).toBe('api.open-meteo.com');expect(url.searchParams.get('latitude')).toBe('36.15');
-  return new Response(JSON.stringify({current:{time:now.getTime()/1000,temperature_2m:20,apparent_temperature:21,relative_humidity_2m:50,wind_speed_10m:10},current_units:{temperature_2m:'°C',apparent_temperature:'°C',relative_humidity_2m:'%',wind_speed_10m:'km/h'}}));
+  calls.push(url.href);
+  if(url.hostname==='photon.komoot.io') return Response.json({features:[{geometry:{coordinates:[-95.99,36.15]},properties:{city:'Tulsa',state:'Oklahoma',country:'United States',countrycode:'US'}}]});
+  expect(url.hostname).toBe('api.open-meteo.com');expect(url.searchParams.get('latitude')).toBe('36.15');
+  return new Response(JSON.stringify({current:{time:now.getTime()/1000,temperature_2m:20,apparent_temperature:21,relative_humidity_2m:50,wind_speed_10m:10},current_units:{temperature_2m:'°F',apparent_temperature:'°F',relative_humidity_2m:'%',wind_speed_10m:'mp/h'}}));
  },now);
- expect(calls).toHaveLength(1);expect(data.scope).toBe('weather');expect(data.sources[0].excerpt).toContain('Your device location');expect(calls[0]).not.toContain('Chicago');
+ expect(calls).toHaveLength(2);expect(data.scope).toBe('weather');expect(data.sources[0].excerpt).toContain('Tulsa, OK');expect(calls[0]).not.toContain('Chicago');
 });
 
 it('resolves nearby device coordinates to a city and preserves the requested nearby subject',async()=>{
@@ -193,7 +195,7 @@ it('resolves nearby device coordinates to a city and preserves the requested nea
 });
 it('does not use distant reverse-geocoding results or unrelated nearby search results',async()=>{
  await expect(retrieveWeb({...request,kind:'web',query:'coffee shops nearby in latitude 36.15 longitude -95.99',coordinates:{latitude:36.15,longitude:-95.99}},new AbortController().signal,async()=>new Response(JSON.stringify({features:[{geometry:{coordinates:[-87.6,41.9]},properties:{city:'Chicago'}}]})),now)).rejects.toThrow('resolved');
- await expect(retrieveWeb({...request,kind:'web',query:'Find coffee shops nearby in Tulsa, OK'},new AbortController().signal,async()=>new Response('<div class="b_algo"><h2><a href="https://example.org/phone">Find your phone</a></h2><div class="b_caption"><p>Locate your device</p></div></div>'),now)).rejects.toThrow('unavailable');
+ await expect(retrieveWeb({...request,kind:'web',query:'Find coffee shops nearby in Tulsa, OK'},new AbortController().signal,async()=>new Response('<div class="b_algo"><h2><a href="https://example.org/phone">Find your phone</a></h2><div class="b_caption"><p>Locate your device</p></div></div>'),now)).resolves.toMatchObject({retrievalStatus:'insufficient',sources:[]});
 });
 
 it('serves city resolution on the real location route, validates coordinates and restricts origins',async()=>{
@@ -236,7 +238,7 @@ it('parses DuckDuckGo organic links safely and skips ads and challenges',()=>{
 
 it('uses the next local calendar day for a structured forecast rather than current conditions',async()=>{
  const place={name:'Example City',admin1:'Example Region',country:'Example Country',country_code:'EX',population:100000,latitude:20,longitude:10};
- const payload={timezone:'America/Chicago',current:{time:now.getTime()/1000,temperature_2m:20,apparent_temperature:19,relative_humidity_2m:50,wind_speed_10m:5},current_units:{temperature_2m:'°C',apparent_temperature:'°C',relative_humidity_2m:'%',wind_speed_10m:'km/h'},daily:{time:[new Date('2026-10-01T05:00:00Z').getTime()/1000,new Date('2026-10-02T05:00:00Z').getTime()/1000],temperature_2m_max:[25,30],temperature_2m_min:[10,15],precipitation_probability_max:[5,75]},daily_units:{temperature_2m_max:'°C',temperature_2m_min:'°C',precipitation_probability_max:'%'}};
+ const payload={timezone:'America/Chicago',current:{time:now.getTime()/1000,temperature_2m:68,apparent_temperature:66.2,relative_humidity_2m:50,wind_speed_10m:5},current_units:{temperature_2m:'°C',apparent_temperature:'°C',relative_humidity_2m:'%',wind_speed_10m:'km/h'},daily:{time:[new Date('2026-10-01T05:00:00Z').getTime()/1000,new Date('2026-10-02T05:00:00Z').getTime()/1000],temperature_2m_max:[25,30],temperature_2m_min:[10,15],precipitation_probability_max:[5,75]},daily_units:{temperature_2m_max:'°C',temperature_2m_min:'°C',precipitation_probability_max:'%'}};
  const result=await retrieveCurrentWeather({...request,query:'weather tomorrow'},'Example City',new AbortController().signal,async url=>{
   if(url.hostname.includes('geocoding')) return new Response(JSON.stringify({results:[place]}));
   expect(url.searchParams.get('forecast_days')).toBe('2');return new Response(JSON.stringify(payload));
@@ -286,4 +288,32 @@ it('keeps focused local-feed headlines that omit the city in their title',async(
   return new Response(feed([item('Council approves library expansion','Fri, 02 Oct 2026 03:30:00 GMT')]));
  },now);
  expect(result.sources[0].title).toBe('Council approves library expansion');
+});
+
+
+it('uses regional weather units at the API layer and keeps non-U.S. weather locally standard',async()=>{
+ for(const country of ['US','PR','BS','BZ','KY','PW'])expect(weatherTemperatureUnit(country)).toBe('fahrenheit');
+ for(const country of ['GB','CA','FR','AU','JP'])expect(weatherTemperatureUnit(country)).toBe('celsius');
+ const place={name:'London',country:'United Kingdom',country_code:'GB',latitude:51.5,longitude:-0.12};
+ const result=await retrieveCurrentWeather({...request,query:'London weather in Fahrenheit'},'London, GB',new AbortController().signal,async url=>{
+  if(url.hostname.includes('geocoding'))return Response.json({results:[place]});
+  expect(url.searchParams.get('temperature_unit')).toBe('celsius');
+  return Response.json({current:{time:now.getTime()/1000,temperature_2m:20,apparent_temperature:19,relative_humidity_2m:50,wind_speed_10m:10},current_units:{temperature_2m:'°C',apparent_temperature:'°C',relative_humidity_2m:'%',wind_speed_10m:'km/h'}});
+ },now);
+ expect(result.sources[0].excerpt).toContain('20°C');
+});
+
+it('caches verified geocodes while fetching fresh weather readings on every request',async()=>{
+ let geocodes=0, forecasts=0;
+ vi.stubGlobal('fetch',async url=>{
+  if(url.hostname.includes('geocoding')){geocodes++;return Response.json({results:[{name:'Cacheville',country_code:'US',latitude:36,longitude:-96}]});}
+  forecasts++;
+  return Response.json({current:{time:now.getTime()/1000,temperature_2m:70+forecasts,apparent_temperature:70,relative_humidity_2m:50,wind_speed_10m:10},current_units:{temperature_2m:'°F',apparent_temperature:'°F',relative_humidity_2m:'%',wind_speed_10m:'mp/h'}});
+ });
+ try {
+  const first=await retrieveCurrentWeather(request,'Cacheville',new AbortController().signal,fetch,now);
+  const second=await retrieveCurrentWeather(request,'Cacheville',new AbortController().signal,fetch,now);
+  expect(geocodes).toBe(1);expect(forecasts).toBe(2);
+  expect(first.sources[0].excerpt).toContain('71°F');expect(second.sources[0].excerpt).toContain('72°F');
+ } finally {vi.unstubAllGlobals();}
 });

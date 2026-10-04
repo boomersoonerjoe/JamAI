@@ -8,6 +8,7 @@ export function forecastFacts(evidence?: SearchEvidence) {
 }
 export function validForecastAnswer(text:string,evidence?:SearchEvidence) {
  const facts=forecastFacts(evidence);if(!facts)return true;
+ if(new RegExp(`(?:°${facts.unit==='°F'?'C':'F'}\\b|\\b${facts.unit==='°F'?'Celsius':'Fahrenheit'}\\b)`,'i').test(text))return false;
  if(/feel|right now|currently|won['’]t rain|will not rain|no rain|will be dry/i.test(text))return false;
  const cleaned=text.replace(/\b\d{4}-\d{2}-\d{2}\b/g,'').replace(/\[\d+\]/g,'');
  const numbers=[...cleaned.matchAll(/-?\d+(?:\.\d+)?/g)].map(m=>+m[0]);
@@ -28,12 +29,22 @@ export function currentWeatherFacts(evidence?:SearchEvidence) {
 export function validWeatherAnswer(text:string,evidence:SearchEvidence) {
  if(forecastFacts(evidence))return validForecastAnswer(text,evidence);
  const facts=currentWeatherFacts(evidence);if(!facts)return true;
+ if(new RegExp(`(?:°${facts.unit==='°F'?'C':'F'}\\b|\\b${facts.unit==='°F'?'Celsius':'Fahrenheit'}\\b)`,'i').test(text))return false;
  if(/tomorrow|next|yesterday|forecast|high|low|rain|snow/i.test(text))return false;
- const numbers=[...text.matchAll(/-?\d+(?:\.\d+)?/g)].map(match=>+match[0]);
+ const numbers=[...text.replace(/\[\d+\]/g,'').matchAll(/-?\d+(?:\.\d+)?/g)].map(match=>+match[0]);
  return numbers.length>0 && numbers.every(number=>[facts.temperature,facts.feelsLike,facts.humidity,facts.wind].filter(Number.isFinite).some(value=>Math.abs(value-number)<=0.55));
 }
 export function supportedWeatherAnswer(evidence:SearchEvidence) {
  if(forecastFacts(evidence))return supportedForecastAnswer(evidence);
  const facts=currentWeatherFacts(evidence);if(!facts)throw new Error('No structured weather');
  return `It is currently ${facts.temperature}${facts.unit} in ${facts.place}, and feels like ${facts.feelsLike}${facts.unit}.`;
+}
+
+// Validated API readings need no generative interpretation. Requests for advice,
+// comparisons or additional facts still use the full local model and validation.
+export function directWeatherAnswer(question:string,evidence:SearchEvidence,showSources=false) {
+ if(evidence.scope!=='weather' || !/\b(?:weather|forecast|temperature|feels? like)\b/i.test(question))return;
+ if(/\b(?:why|how|wear|jacket|umbrella|safe|recommend|advice|compare|wind|humidity|sunrise|sunset|hourly|storm|warning|snow|rain)\b/i.test(question))return;
+ if(!forecastFacts(evidence) && !currentWeatherFacts(evidence))return;
+ return supportedWeatherAnswer(evidence)+(showSources?' [1]':'');
 }

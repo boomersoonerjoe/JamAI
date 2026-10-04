@@ -29,7 +29,8 @@ for (const question of [
       search,onUpdate(){},onActivity(){},
     });
     expect(search).toHaveBeenCalledOnce();
-    expect(generate).toHaveBeenCalledOnce();
+    if (/weather/i.test(question)) {expect(generate).not.toHaveBeenCalled();expect(result.text).toMatch(/Tulsa.*°F|°F.*Tulsa/);}
+    else expect(generate).toHaveBeenCalledOnce();
     expect(result.retryable).toBe(false);
     console.log(JSON.stringify({question,provider:result.evidence.provider,sources:result.evidence.sources.map(s=>({title:s.title,url:s.url}))}));
   }, 50000);

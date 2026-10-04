@@ -2,10 +2,13 @@ import type { RetrievalPlan } from './retrieval-plan';
 import type { Coordinates } from './location';
 import type { DeviceContext } from './device-context';
 export type SearchMode = 'auto' | 'always' | 'web' | 'off';
-export interface SearchSource { title: string; url: string; excerpt: string; publisher?: string; publishedAt?: string; publishedDay?:string;publicationTimeZone?:string; article?: {pageTitle?:string;status:'retrieved'|'restricted'|'unavailable'; text?:string; fetchedAt:string; url:string; publishedAt?:string; productLinks?:{title:string;url:string}[]; pageKind?:'merchant'|'editorial'|'other'; offers?:PriceFact[]} }
+export interface SearchSource { title: string; url: string; excerpt: string; publisher?: string; evidenceRole?:'verified-offer'|'recent-report'|'search-lead'; publishedAt?: string; publishedDay?:string;publicationTimeZone?:string; article?: {pageTitle?:string;status:'retrieved'|'restricted'|'unavailable'; text?:string; fetchedAt:string; url:string; publishedAt?:string; productLinks?:{title:string;url:string}[]; pageKind?:'merchant'|'editorial'|'other'; offers?:PriceFact[]} }
 export interface PriceFact {name:string;price:string;currency:string;previousPrice?:string;priceKind?:'starting-at';saleVerified?:boolean;url?:string;seller?:string}
 export interface SearchEvidence {
-  retrievalIntent?:'product-price'|'sale-event'|'other';
+  retrievalIntent?:'product-price'|'deal-discovery'|'sale-event'|'other';
+  shoppingSubject?:string;
+  retrievalStatus?:'insufficient';
+  dealDiscovery?:{status:'verified-offers'|'leads-only'|'insufficient';facts:PriceFact[]};
   currentPrice?:{status:'verified-live'|'unverified';checkedAt:string;facts:PriceFact[]};
   newsStatus?:'no-reports-today';searchedDay?:string;
   query: string; provider: string; fetchedAt: string; timeZone: string;
@@ -55,11 +58,11 @@ export async function searchInternet(query: string, clock: DeviceContext, signal
   const today = /\b(today|tonight|this morning)\b/i.test(query);
   const response = await fetch('/api/search', {
     method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, cache: 'no-store',
-    body: JSON.stringify({ query, kind, today, day: clock.localDate, timeZone: clock.timeZone, ...(coordinates ? {coordinates} : {}), ...(plan ? {searchQueries:plan.queries,requiredTerms:plan.terms,retrievalIntent:plan.intent} : {}) }),
+    body: JSON.stringify({ query, kind, today, day: clock.localDate, timeZone: clock.timeZone, ...(coordinates ? {coordinates} : {}), ...(plan ? {searchQueries:plan.queries,requiredTerms:plan.terms,retrievalIntent:plan.intent,shoppingSubject:plan.subject} : {}) }),
   });
-  const evidence = await response.json() as SearchEvidence & { error?: string };
-  if (!response.ok) throw new Error(evidence.error || `Search returned HTTP ${response.status}.`);
-  if (!Array.isArray(evidence.sources) || (!evidence.sources.length && evidence.newsStatus !== 'no-reports-today') || evidence.sources.some(s => !safeSourceURL(s.url))) throw new Error('Search returned no usable sources.');
+  const evidence = await response.json() as SearchEvidence & { error?: string;code?:string };
+  if (!response.ok) throw Object.assign(new Error(evidence.error || `Search returned HTTP ${response.status}.`),{code:evidence.code || 'RETRIEVAL_FAILED'});
+  if (!Array.isArray(evidence.sources) || (!evidence.sources.length && evidence.newsStatus !== 'no-reports-today' && evidence.retrievalStatus !== 'insufficient') || evidence.sources.some(s => !safeSourceURL(s.url))) throw new Error('Search returned no usable sources.');
   return evidence;
 }
 
@@ -76,5 +79,5 @@ export async function readSourceArticle(source: SearchSource, signal: AbortSigna
 
 // Detect an execution/capability failure, independent of user-question wording.
 export function isLiveAccessRefusal(text: string) {
-  return /(?:cannot|can't|unable to|do not|don't|without|no|lack).{0,45}(?:(?:browse|search|access|check) (?:the )?(?:live )?(?:web|internet)|(?:live|real[- ]time) (?:access|data|information|browsing))|(?:need|requires?).{0,20}(?:live|real[- ]time|web|internet) (?:search|access|data)/i.test(text);
+  return /\b(?:internet|web|search|browsing)\b.{0,20}(?:unavailable|not available)/i.test(text) || /(?:cannot|can't|unable to|do not|don't|without|no|lack).{0,45}(?:(?:browse|search|access|check) (?:the )?(?:live )?(?:web|internet)|(?:live|real[- ]time) (?:access|data|information|browsing))|(?:need|requires?).{0,20}(?:live|real[- ]time|web|internet) (?:search|access|data)/i.test(text);
 }

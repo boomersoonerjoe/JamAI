@@ -36,7 +36,7 @@ export function makeServer(search = retrieveSearch, article = retrieveArticle, l
         const result = path === '/api/location' ? {place:await locate(input,controller.signal)} : await (path === '/api/article' ? article : search)(input, controller.signal);
         if (!controller.signal.aborted) json(response, 200, result);
       } catch (error) {
-        if (!controller.signal.aborted && !response.destroyed) json(response, 503, { error: error instanceof Error ? error.message : 'Free search is unavailable.' });
+        if (!controller.signal.aborted && !response.destroyed) json(response, 503, { error: error instanceof Error ? error.message : 'This retrieval request failed.',code:error.code || 'RETRIEVAL_FAILED' });
       }
       return;
     }

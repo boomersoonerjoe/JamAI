@@ -7,7 +7,7 @@ afterEach(() => vi.useRealTimers());
 const tags = () => Response.json({ models: [{ name: MAC_MODEL }] });
 
 it('connects an installed local service without a click and permits chat', async () => {
-  const fetcher = vi.fn().mockResolvedValueOnce(tags()).mockResolvedValueOnce(new Response('{"message":{"content":"Ready"},"done":true}\n'));
+  const fetcher = vi.fn().mockResolvedValueOnce(tags()).mockResolvedValueOnce(Response.json({done:true})).mockResolvedValueOnce(new Response('{"message":{"content":"Ready"},"done":true}\n'));
   const provider = new OllamaChatProvider(fetcher);
   const report = vi.fn();
   connectOnStartup(provider, report);
@@ -18,11 +18,11 @@ it('connects an installed local service without a click and permits chat', async
 
 it('automatically recovers when the daemon starts shortly after the page', async () => {
   vi.useFakeTimers();
-  const fetcher = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValue(tags());
+  const fetcher = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockImplementation(async () => tags());
   const report = vi.fn();
   connectOnStartup(new OllamaChatProvider(fetcher), report);
   await vi.advanceTimersByTimeAsync(2000);
-  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(fetcher).toHaveBeenCalledTimes(3);
   expect(report).toHaveBeenLastCalledWith(expect.objectContaining({ phase: 'ready' }));
 });
 

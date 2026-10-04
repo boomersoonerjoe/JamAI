@@ -71,7 +71,7 @@ describe('local-first routing and natural replies', () => {
   it('does not fabricate live data when search is unavailable', async () => {
     const s=setup(); s.search.mockRejectedValueOnce(new Error('Offline'));
     const result=await answerConversation(conversation('Tulsa weather right now'),[],s.provider,s.options);
-    expect(result.text).toContain("couldn't retrieve live information"); expect(result.text).not.toMatch(/validat|publication/); expect(s.generate).not.toHaveBeenCalled();
+    expect(result.text).toContain('This live search request failed'); expect(result.text).not.toMatch(/internet.{0,20}unavailable|when internet search is available/); expect(result.text).not.toMatch(/validat|publication/); expect(s.generate).not.toHaveBeenCalled();
   });
   it('preserves retrieval cancellation', async () => {
     const s=setup(); const abort=new AbortController();

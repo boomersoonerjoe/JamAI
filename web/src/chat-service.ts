@@ -1,11 +1,13 @@
+import {validDiscoveryAnswer,supportedDiscoveryAnswer} from './deal-answer';
 import {requiresCurrentPrice,gateCurrentPrices} from '../scripts/price-evidence.mjs';
 import {validNewsDates,supportedNewsAnswer} from './news-answer';
 import {retrievalOutcome,validPriceAnswer,supportedPriceAnswer} from './price-answer';
-import { validWeatherAnswer, supportedWeatherAnswer } from './weather-answer';
+import { validWeatherAnswer, supportedWeatherAnswer, directWeatherAnswer } from './weather-answer';
+import { clearlyLocalRequest, directWeatherRequest } from './request-routing';
 import { isLocationQuestion, lookupDeviceCity, localRequest, explicitPlace, resolveLocation, locatedQuery, type LocationProvider } from './location';
 import type { Conversation, MemoryNote } from './types';
 import type { ChatProvider } from './provider';
-import { recalledEvidence } from './retrieval-context';
+import { recalledEvidence,publicTopicContext } from './retrieval-context';
 import { buildPrompt } from './context';
 import { memoryToSave, memoryConfirmation, savedGreeting } from './memory';
 import { deviceContext, isDeviceClockQuestion, clockAnswer, type DeviceContext } from './device-context';
@@ -88,12 +90,15 @@ export async function answerConversation(conversation: Conversation, memories: M
     if(requiresCurrentPrice(question) && /\b(?:now|current|currently|today|how much|on sale)\b/i.test(question)) evidence=gateCurrentPrices(evidence);
   }
   let plan;
-  if (!evidence && options.mode !== 'off' && globalThis.navigator?.onLine !== false && provider.planRetrieval && !(isSuppliedArithmetic(question) && !current)) {
+  const topicContext=publicTopicContext(conversation);
+  const skipPlanning = !topicContext && (clearlyLocalRequest(question) || directWeatherRequest(searchQuestion));
+  if (!skipPlanning && !evidence && options.mode !== 'off' && globalThis.navigator?.onLine !== false && provider.planRetrieval && !(isSuppliedArithmetic(question) && !current)) {
     options.onActivity('Local AI is planning whether live information is needed…');
     try {
-      plan = await provider.planRetrieval(searchQuestion, clock, options.signal);
+      plan = await provider.planRetrieval(searchQuestion, clock, options.signal,...(topicContext?[topicContext] as const:[]));
       // Deterministic live routes remain a safety net if the small local planner misses intent.
       current ||= plan.retrieve;
+      if(topicContext && plan.resolvedQuestion)searchQuestion=plan.resolvedQuestion;
     } catch {
       options.signal.throwIfAborted();
       // A failed planner is an unknown decision, not a decision to stay offline.
@@ -107,10 +112,10 @@ export async function answerConversation(conversation: Conversation, memories: M
       options.onActivity('Searching free internet sources…');
       evidence = await (options.search ?? searchInternet)(searchQuestion, clock, options.signal, options.mode === 'web' ? 'web' : undefined, userLocation?.coordinates, ...(plan?.retrieve ? [plan] as const : []));
       options.signal.throwIfAborted();
-      if (!evidence.sources.length && evidence.newsStatus !== 'no-reports-today') throw new Error('No usable sources were retrieved.');
+      if (!evidence.sources.length && evidence.newsStatus !== 'no-reports-today' && evidence.retrievalStatus !== 'insufficient') throw new Error('No usable sources were retrieved.');
     } catch (error) {
       options.signal.throwIfAborted();
-      const text = "I couldn't retrieve live information right now. Please try again when internet search is available.";
+      const text = searchFailure(options.mode,error);
       options.onUpdate(text); return { text, retryable: true };
     }
   }
@@ -122,11 +127,16 @@ export async function answerConversation(conversation: Conversation, memories: M
     options.signal.throwIfAborted();
     evidence = {...evidence,sources:[source,...evidence.sources.slice(1)]};
   }
-  options.onActivity(evidence ? 'Local AI is summarizing retrieved sources…' : 'Local AI is replying…');
   const showSources = wantsSources(question);
+  const weatherReply = !recalled && evidence ? directWeatherAnswer(question,evidence,showSources) : undefined;
+  if (weatherReply) {
+    options.onUpdate(weatherReply,evidence);
+    return {text:weatherReply,evidence,retryable:false};
+  }
 
+  options.onActivity(evidence ? 'Local AI is summarizing retrieved sources…' : 'Local AI is replying…');
   const newNews=!!evidence && !recalled && ['today','recent'].includes(evidence.scope);
-  const updateAnswer = (text: string) => { if (!newNews && evidence?.scope !== 'weather' && !evidence?.currentPrice) options.onUpdate(text,evidence); };
+  const updateAnswer = (text: string) => { if (!evidence) options.onUpdate(text,evidence); };
   let text = await provider.generate({ prompt, device: clock, evidence, showSources, recalled, reasoning: !evidence && isSuppliedArithmetic(question) }, updateAnswer, options.signal);
   options.signal.throwIfAborted();
   // A small local planner may miss a novel intent. A capability refusal is an
@@ -140,9 +150,9 @@ export async function answerConversation(conversation: Conversation, memories: M
       if(recoveredOutcome){options.onUpdate(recoveredOutcome,evidence);return {text:recoveredOutcome,evidence,retryable:false};}
       if (!evidence.sources.length) throw new Error('No usable sources');
       text = await provider.generate({prompt,device:clock,evidence,showSources}, updateAnswer, options.signal);
-    } catch {
+    } catch(error) {
       options.signal.throwIfAborted();
-      text = "I tried retrieving live information, but the sources were unavailable. Please try again.";
+      text = searchFailure(options.mode,error);
       options.onUpdate(text); return {text,retryable:true};
     }
   }
@@ -152,19 +162,25 @@ export async function answerConversation(conversation: Conversation, memories: M
   }
   if(newNews && evidence) {
     if(!validNewsDates(text,evidence))text=supportedNewsAnswer(evidence);
-    options.onUpdate(text,evidence);
   }
   if(evidence?.currentPrice?.status==='verified-live') {
     if(!validPriceAnswer(text,evidence))text=supportedPriceAnswer(evidence);
-    options.onUpdate(text,evidence);
   }
   if (evidence?.scope === 'weather') {
     if (!validWeatherAnswer(text,evidence)) {
       text = await provider.generate({prompt:`${prompt}\nUse only the measurements provided. For a forecast give high, low and rain probability. For current conditions give temperature and feels-like; never invent a forecast.`,device:clock,evidence,showSources},()=>{},options.signal);
       if (!validWeatherAnswer(text,evidence)) text=supportedWeatherAnswer(evidence!);
     }
-    options.onUpdate(text,evidence);
   }
+  if(evidence?.dealDiscovery && !validDiscoveryAnswer(text,evidence))text=supportedDiscoveryAnswer(evidence);
+  if(evidence && isLiveAccessRefusal(text))text='The live search completed, but the retrieved evidence does not establish an answer to this question.';
   options.signal.throwIfAborted();
+  if(evidence)options.onUpdate(text,evidence);
   return { text, evidence, retryable: false };
+}
+
+function searchFailure(mode:SearchMode,error:unknown) {
+ if(mode==='off')return 'Internet search is turned off. Enable it to check live information.';
+ if(globalThis.navigator?.onLine===false)return 'Your device reports that it is offline. I could not check live information.';
+ return 'This live search request failed. Please retry this request.';
 }

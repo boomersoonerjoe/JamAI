@@ -28,10 +28,10 @@ describe('semantic retrieval planning',()=>{
   const provider={planRetrieval:planner,generate} as unknown as ChatProvider;
   const opts={mode:'auto' as const,clock,signal:new AbortController().signal,search,onUpdate(){},onActivity(){}};
   await answerConversation(c('Write a limerick about a cat'),[],provider,opts);
-  expect(planner).toHaveBeenCalledOnce();expect(search).not.toHaveBeenCalled();
+  expect(planner).not.toHaveBeenCalled();expect(search).not.toHaveBeenCalled();
   await answerConversation(c('Write a poem'),[],provider,{...opts,mode:'off'});
   await answerConversation(c('Calculate 25% of 120'),[],provider,opts);
-  expect(planner).toHaveBeenCalledOnce();expect(search).not.toHaveBeenCalled();
+  expect(planner).not.toHaveBeenCalled();expect(search).not.toHaveBeenCalled();
  });
  it('never streams planner JSON or sends saved notes to the planner',async()=>{
   const generate=vi.fn(async(_request:ChatRequest)=>'{"retrieve":true,"queries":["subject"],"terms":["subject"]}');

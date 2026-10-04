@@ -1,4 +1,4 @@
-import { planRetrieval } from './retrieval-plan';
+import { planRetrieval,type RetrievalTopicContext } from './retrieval-plan';
 import type { DeviceContext } from './device-context';
 import { systemInstructions, inferencePrompt } from './inference-context';
 import type { ChatProvider, ChatRequest, ProviderStatus } from './provider';
@@ -63,8 +63,8 @@ export class LocalChatProvider implements ChatProvider {
     })();
     return this.loading;
   }
-  planRetrieval(question: string, device: DeviceContext, signal: AbortSignal) {
-    return planRetrieval(this, question, device, signal);
+  planRetrieval(question: string, device: DeviceContext, signal: AbortSignal,context?:RetrievalTopicContext) {
+    return planRetrieval(this, question, device, signal,context);
   }
   async generate(request: ChatRequest, onUpdate: (text: string) => void, signal: AbortSignal): Promise<string> {
     if (!this.runtime) throw new Error('Load the local model first.');

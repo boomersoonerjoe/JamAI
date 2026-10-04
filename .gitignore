@@ -8,6 +8,7 @@ xcuserdata/
 
 # Web dependencies and production output
 .pnpm-store/
+/node_modules/
 web/node_modules/
 web/dist/
 

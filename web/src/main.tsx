@@ -141,7 +141,7 @@ function App() {
         setProviderID(e.target.value); setStatus({ phase: 'idle', message: 'Connect or load the selected runtime to start chat.' }); setError('');
       }}><option value="ollama">Local Ollama (Mac / PC)</option><option value="webllm">On-device browser (WebGPU)</option></select></label>
       <p><strong>{provider.name}</strong></p>
-      {providerID === 'ollama' ? <p>Install Ollama and Qwen3.5 4B once. NhomeAI connects automatically when opened. AI replies and summaries run on this computer and work offline. Ollama must be running at 127.0.0.1:11434. No cloud fallback.</p> : <p>First load downloads model assets from Hugging Face and the WebLLM runtime CDN, then caches them in this browser. Chats run on this device. Allow roughly 1 GB or more of free storage and memory; keep the app open while loading.</p>}
+      {providerID === 'ollama' ? <p>Install Ollama and Huihui Qwen3 8B Abliterated v2 once. NhomeAI connects automatically when opened. AI replies and summaries run on this computer and work offline. Ollama must be running at 127.0.0.1:11434. No cloud fallback.</p> : <p>First load downloads model assets from Hugging Face and the WebLLM runtime CDN, then caches them in this browser. Chats run on this device. Allow roughly 1 GB or more of free storage and memory; keep the app open while loading.</p>}
       <div role="status" aria-live="polite">{status.message}</div>
       {status.phase === 'loading' && <progress aria-label="Model loading" max={1} value={status.progress ?? 0} />}
       {status.phase !== 'ready' && <button disabled={status.phase === 'loading'} onClick={load}>{status.phase === 'error' ? 'Retry model load' : providerID === 'ollama' ? 'Connect local Ollama' : 'Load local model'}</button>}

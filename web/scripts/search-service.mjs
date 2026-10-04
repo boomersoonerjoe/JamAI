@@ -1,3 +1,4 @@
+import { discoveryEvidence } from './deal-evidence.mjs';
 import { load } from 'cheerio';
 import { gateCurrentPrices, requiresCurrentPrice } from './price-evidence.mjs';
 
@@ -32,9 +33,10 @@ export function validateSearch(input) {
     if (!Array.isArray(value) || value.length > max || value.some(v=>typeof v !== 'string' || !v.trim() || v.length > size)) throw new Error('Invalid search plan');
     return value.map(v=>v.trim());
   };
-  if(input.retrievalIntent!==undefined && !['product-price','sale-event','other'].includes(input.retrievalIntent))throw new Error('Invalid retrieval intent');
+  if(input.retrievalIntent!==undefined && !['product-price','deal-discovery','sale-event','other'].includes(input.retrievalIntent))throw new Error('Invalid retrieval intent');
+  if(input.shoppingSubject!==undefined && (typeof input.shoppingSubject!=='string' || input.shoppingSubject.length>100))throw new Error('Invalid shopping subject');
   const searchQueries = list(input.searchQueries,2,300), requiredTerms = list(input.requiredTerms,5,60);
-  return { ...(input.retrievalIntent?{retrievalIntent:input.retrievalIntent}:{}), ...(searchQueries ? {searchQueries} : {}), ...(requiredTerms ? {requiredTerms} : {}), query: input.query.trim(), kind: input.kind, today: input.today, day: input.day, timeZone: input.timeZone, ...(coordinates ? {coordinates:{latitude:Math.round(coordinates.latitude*100)/100,longitude:Math.round(coordinates.longitude*100)/100}} : {}) };
+  return { ...(input.shoppingSubject?{shoppingSubject:input.shoppingSubject}:{}), ...(input.retrievalIntent?{retrievalIntent:input.retrievalIntent}:{}), ...(searchQueries ? {searchQueries} : {}), ...(requiredTerms ? {requiredTerms} : {}), query: input.query.trim(), kind: input.kind, today: input.today, day: input.day, timeZone: input.timeZone, ...(coordinates ? {coordinates:{latitude:Math.round(coordinates.latitude*100)/100,longitude:Math.round(coordinates.longitude*100)/100}} : {}) };
 }
 // Feed search expects topic keywords, not response-format instructions.
 export function newsSearchQuery(question) {
@@ -130,12 +132,29 @@ export function parseWebHTML(html, engine) {
   });
   return sources.slice(0, 10);
 }
+// Unicode CLDR temperature/weather preferences; U.S. territories follow the U.S. rule.
+// https://github.com/unicode-org/cldr/blob/main/common/supplemental/units.xml
+const fahrenheitWeatherRegions = new Set(['US','BS','BZ','KY','PR','PW','AS','GU','MP','VI','UM']);
+export function weatherTemperatureUnit(countryCode) {
+  return fahrenheitWeatherRegions.has(String(countryCode).toUpperCase()) ? 'fahrenheit' : 'celsius';
+}
+const weatherGeocodes = new Map();
 export async function retrieveCurrentWeather(request, location, signal, requestFetch = fetch, now = new Date()) {
   let [city, region] = location.split(',').map(s => s.trim());
   const geocode = new URL('https://geocoding-api.open-meteo.com/v1/search');
   geocode.search = new URLSearchParams({name:city,count:'10',language:'en',format:'json'}).toString();
   const get = async url => JSON.parse(await boundedText(await requestFetch(url, {signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:'error'})));
-  let data = request.coordinates ? {results:[]} : await get(geocode);
+  const geocoding = async url => {
+    const key=url.href, cached=weatherGeocodes.get(key);
+    if(requestFetch===fetch && cached && Date.now()-cached.time<600000)return cached.data;
+    const data=await get(url);
+    if(requestFetch===fetch && data.results?.length) {
+      if(weatherGeocodes.size>=64)weatherGeocodes.delete(weatherGeocodes.keys().next().value);
+      weatherGeocodes.set(key,{data,time:Date.now()});
+    }
+    return data;
+  };
+  let data = request.coordinates ? {results:[]} : await geocoding(geocode);
   // Search plans often spell a city and region without a comma. Verify the trailing
   // region against geocoder metadata before using the shorter city query.
   const aliases = stateAliases;
@@ -144,7 +163,7 @@ export async function retrieveCurrentWeather(request, location, signal, requestF
     for(let split=words.length-1;split>0;split--) {
       const candidate=words.slice(0,split).join(' '), suffix=words.slice(split).join(' ');
       geocode.searchParams.set('name',candidate);
-      const found=await get(geocode);
+      const found=await geocoding(geocode);
       if (found.results?.some(p=>p.name.toLowerCase() === candidate.toLowerCase() && [p.admin1,p.country,p.country_code].some(v=>v?.toLowerCase() === (aliases[suffix.toUpperCase()] || suffix).toLowerCase()))) {
         city=candidate;region=suffix;data=found;break;
       }
@@ -152,10 +171,13 @@ export async function retrieveCurrentWeather(request, location, signal, requestF
   }
   const matches = (data.results || []).filter(p => p.name.toLowerCase() === city.toLowerCase() && (!region || [p.admin1,p.country,p.country_code,aliases[region.toUpperCase()]].some(value => value && (value.toLowerCase() === region.toLowerCase() || value === p.admin1 && aliases[region.toUpperCase()] === value))));
   matches.sort((a,b) => (b.population || 0) - (a.population || 0));
-  const place = request.coordinates ? {...request.coordinates,name:'Your device location',admin1:'',country:'',country_code:''} : matches[0];
+  const device = request.coordinates ? await devicePlaceInfo(request.coordinates,signal,requestFetch) : undefined;
+  const place = request.coordinates ? {...request.coordinates,name:device.place,admin1:'',country:'',country_code:device.countryCode} : matches[0];
   if (!place || !Number.isFinite(place.latitude) || !Number.isFinite(place.longitude)) throw new Error('Requested weather location could not be verified.');
   if (matches.length > 1 && (place.population || 0) < 10 * (matches[1].population || 1)) throw new Error('Weather location is ambiguous. Include a state or country.');
-  const unit = /celsius|centigrade/i.test(request.query) ? 'celsius' : /fahrenheit/i.test(request.query) || place.country_code === 'US' ? 'fahrenheit' : 'celsius';
+  const countryCode=String(place.country_code || (place.country==='United States'?'US':'')).toUpperCase();
+  if(!/^[A-Z]{2}$/.test(countryCode))throw new Error('Weather location country could not be verified.');
+  const unit = weatherTemperatureUnit(countryCode);
   const tomorrow = /\btomorrow\b/i.test(request.query + ' ' + (request.searchQueries || []).join(' '));
   const daily = tomorrow || /\b(?:supposed to be|going to be|expected|forecast|high|low)\b/i.test(request.query) && !/\b(?:tomorrow|next|yesterday|last|this week)\b/i.test(request.query);
   const url = new URL('https://api.open-meteo.com/v1/forecast');
@@ -176,9 +198,12 @@ export async function retrieveCurrentWeather(request, location, signal, requestF
 }
 const nearbyPlaces = new Map();
 export async function devicePlace(coordinates, signal, requestFetch = fetch) {
+  return (await devicePlaceInfo(coordinates,signal,requestFetch)).place;
+}
+async function devicePlaceInfo(coordinates, signal, requestFetch = fetch) {
   const key = `${coordinates.latitude.toFixed(2)},${coordinates.longitude.toFixed(2)}`;
   const cached = nearbyPlaces.get(key);
-  if (requestFetch === fetch && cached && Date.now()-cached.time < 600000) return cached.place;
+  if (requestFetch === fetch && cached && Date.now()-cached.time < 600000) return cached.info;
   const url = new URL('https://photon.komoot.io/reverse');
   url.search = new URLSearchParams({lat:coordinates.latitude.toFixed(2),lon:coordinates.longitude.toFixed(2),limit:'1',lang:'en'}).toString();
   const data = JSON.parse(await boundedText(await requestFetch(url,{signal:AbortSignal.any([signal,AbortSignal.timeout(8000)]),redirect:'error'})));
@@ -190,8 +215,11 @@ export async function devicePlace(coordinates, signal, requestFetch = fetch) {
   if (typeof city !== 'string' || !city.trim() || city.length > 120) throw new Error('Device location has no nearby city.');
   const place = [city,state,p.countrycode?.toUpperCase() === 'US' || p.country === 'United States' ? undefined : p.country].filter(Boolean).join(', ');
   if (!place || place.length > 200) throw new Error('Device location has no nearby city.');
-  if (requestFetch === fetch) { if (nearbyPlaces.size >= 64) nearbyPlaces.delete(nearbyPlaces.keys().next().value); nearbyPlaces.set(key,{place,time:Date.now()}); }
-  return place;
+  const countryCode=String(p.countrycode || (p.country==='United States'?'US':'')).toUpperCase();
+  if(!/^[A-Z]{2}$/.test(countryCode))throw new Error('Device location country could not be resolved.');
+  const info={place,countryCode};
+  if (requestFetch === fetch) { if (nearbyPlaces.size >= 64) nearbyPlaces.delete(nearbyPlaces.keys().next().value); nearbyPlaces.set(key,{info,time:Date.now()}); }
+  return info;
 }
 const queryNoise = new Set('major big official store buy running holding hosting events announcements entry level new newest base best discounted discounting developments development announcement closing opening start time dates date moment outside feeling feel about whether yet shopping event check announced plus get its being have has find get find out start starts happen happening happened tell cost costs currently recent latest right now research compare us usa dollars celsius fahrenheit are is was were a an the any there this that these those in on at of for to from and or with me my its it when where what who how does do can could would will having going online anywhere please show tell give search look up current currently latest today tomorrow now right recent sales sale deals deal price prices dates date news weather october january february march april may june july august september november december'.split(' '));
 function subjectWords(text) {
@@ -205,7 +233,8 @@ export function relevantWebSource(source, request, query) {
   const resultYears = `${source.title} ${new URL(source.url).pathname}`.match(/\b20\d{2}\b/g) || [];
   if (requestedYears.length && resultYears.length && !resultYears.some(year=>requestedYears.includes(year))) return false;
   const subjects = [...new Set(subjectWords(query))];
-  const hits = subjects.filter(word=>content.includes(word)).length;
+  const matches=word=>content.includes(word) || request.retrievalIntent==='deal-discovery' && /^computer$/.test(word) && /\b(?:laptops?|desktops?|notebooks?|pcs?|macbooks?|chromebooks?)\b/i.test(content);
+  const hits = subjects.filter(matches).length;
   if (request.kind === 'news' && /britannica|encyclopedia|dictionary/i.test(content)) return false;
   if (subjects.length && hits < Math.min(request.kind === 'news' ? 1 : 2,subjects.length)) return false;
   if (request.requiredTerms?.length) {
@@ -216,7 +245,7 @@ export function relevantWebSource(source, request, query) {
       const actual=new Set(subjectWords(request.query));
       const named=groups.map(words=>words.filter(word=>actual.has(word))).filter(words=>words.length);
       if(named.some(words=>!words.some(word=>content.includes(word)))) return false;
-    } else if (groups.some(words=>!words.every(word=>content.includes(word)))) return false;
+    } else if (groups.some(words=>!words.every(matches))) return false;
   }
   const shopping = /\b(sales?|deals?|discounts?|prices?|cost|on sale)\b/i.test(request.query);
   const eventDate = /\bwhen\b/i.test(request.query);
@@ -381,9 +410,11 @@ export async function retrieveWeb(request, signal, requestFetch = fetch, now = n
         queries.push(targeted);providers.add(extra.provider);
       } catch { signal.throwIfAborted(); }
     }
-    return gateCurrentPrices({retrievalIntent:request.retrievalIntent,query:request.query,searchQueries:queries,provider:[...providers].join(' + '),fetchedAt:now.toISOString(),timeZone:request.timeZone,scope:'web',sources});
+    return discoveryEvidence(gateCurrentPrices({shoppingSubject:request.shoppingSubject,retrievalIntent:request.retrievalIntent,query:request.query,searchQueries:queries,provider:[...providers].join(' + '),fetchedAt:now.toISOString(),timeZone:request.timeZone,scope:'web',sources}));
   }
-  throw new Error(location ? `No weather sources matched the requested location “${location}”. I cannot verify its current weather.` : 'Free general web search is unavailable or returned no usable results. I cannot verify this question.');
+  if(batches.some(batch=>batch.some(result=>result.status==='fulfilled')))return {shoppingSubject:request.shoppingSubject,query:request.query,retrievalIntent:request.retrievalIntent,searchQueries:queries,provider:'Free web search',fetchedAt:now.toISOString(),timeZone:request.timeZone,scope:'web',sources:[],retrievalStatus:'insufficient'};
+  const failure=new Error(location ? `No weather sources matched the requested location “${location}”. I cannot verify its current weather.` : 'The search providers did not complete this request.');
+  failure.code='SEARCH_PROVIDER_FAILURE';throw failure;
 }
 async function boundedText(response) {
   if (!response.ok) throw new Error(`Free search returned HTTP ${response.status}.`);

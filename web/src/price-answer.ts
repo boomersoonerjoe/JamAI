@@ -12,6 +12,7 @@ export function supportedPriceAnswer(evidence:SearchEvidence) {
  return evidence.currentPrice!.facts.slice(0,2).map(fact=>`${fact.seller} currently lists ${fact.name} ${fact.priceKind==='starting-at'?'starting at':'at'} ${fact.currency} ${fact.price}${fact.previousPrice?` (previously ${fact.currency} ${fact.previousPrice})`:''}.`).join(' ');
 }
 export function retrievalOutcome(evidence?:SearchEvidence) {
+ if(evidence?.retrievalStatus==='insufficient')return 'I searched live sources, but did not find relevant evidence for this request.';
  if(evidence?.currentPrice?.status==='unverified')return 'I searched live sources, but could not verify a current retailer price or active sale.';
  if(evidence?.newsStatus==='no-reports-today')return `I checked live news sources, but found no matching reports published on ${evidence.searchedDay} yet.`;
 }

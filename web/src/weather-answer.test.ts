@@ -8,6 +8,7 @@ it('validates forecast values and rejects invented current or feels-like conditi
  expect(validForecastAnswer('It is 22°C right now.',evidence)).toBe(false);
  expect(validForecastAnswer('It will not rain; 7% chance.',evidence)).toBe(false);
  expect(validForecastAnswer('A high of 35°C.',evidence)).toBe(false);
+ expect(validForecastAnswer('A high of 23.4°F.',evidence)).toBe(false);
  expect(validForecastAnswer(supportedForecastAnswer(evidence),evidence)).toBe(true);
 });
 
@@ -16,7 +17,7 @@ it('retries unsupported local synthesis and falls back to the retrieved forecast
  const {vi}=await import('vitest');
  const provider={generate:vi.fn(async()=> 'It feels like 35°C tomorrow.')};
  const updates:string[]=[];
- const result=await answerConversation({id:'test',title:'Forecast',messages:[{id:'q',role:'user',text:'What is the forecast tomorrow?',createdAt:''}]},[],provider as unknown as import('./provider').ChatProvider,{manualLocation:'Example City',mode:'auto',signal:new AbortController().signal,search:async()=>evidence,onUpdate:text=>updates.push(text),onActivity(){}});
+ const result=await answerConversation({id:'test',title:'Forecast',messages:[{id:'q',role:'user',text:'Should I bring an umbrella for the forecast tomorrow?',createdAt:''}]},[],provider as unknown as import('./provider').ChatProvider,{manualLocation:'Example City',mode:'auto',signal:new AbortController().signal,search:async()=>evidence,onUpdate:text=>updates.push(text),onActivity(){}});
  expect(provider.generate).toHaveBeenCalledTimes(2);
  expect(provider.generate.mock.calls[0]).toHaveLength(3);
  expect(result.text).toBe(supportedForecastAnswer(evidence));
@@ -28,5 +29,14 @@ it('preserves current readings and rejects invented next-day conditions',()=>{
  expect(validWeatherAnswer('It is 18.5°C and feels like 17°C.',current)).toBe(true);
  expect(validWeatherAnswer('Wind is 5 km/h and humidity is 50%.',current)).toBe(true);
  expect(validWeatherAnswer('It is 18.5°C. Tomorrow will be 25°C.',current)).toBe(false);
+ expect(validWeatherAnswer('It is 18.5°F.',current)).toBe(false);
+ expect(validWeatherAnswer('It is 18.5 Fahrenheit.',current)).toBe(false);
  expect(validWeatherAnswer(supportedWeatherAnswer(current),current)).toBe(true);
+});
+
+it('answers simple weather directly while retaining model synthesis for advice',async()=>{
+ const {directWeatherAnswer}=await import('./weather-answer');
+ expect(directWeatherAnswer('What is the forecast tomorrow?',evidence)).toBe(supportedForecastAnswer(evidence));
+ expect(directWeatherAnswer('Should I bring an umbrella tomorrow?',evidence)).toBeUndefined();
+ expect(directWeatherAnswer('What is the forecast tomorrow? Cite sources.',evidence,true)).toMatch(/\[1\]$/);
 });

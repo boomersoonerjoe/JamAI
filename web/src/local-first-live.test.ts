@@ -57,7 +57,7 @@ for (const [query,kind] of [
   const result = await answerConversation({id:'additional',title:query,messages:[{id:'q',role:'user',text:query,createdAt:clock.isoTime}]},[],provider,{mode:'auto',signal:AbortSignal.timeout(120000),clock:()=>clock,search:async()=>evidence,onUpdate(){},onActivity(){}});
     console.log(JSON.stringify({query,evidence,answer:result.text,retryable:result.retryable}));
     expect(result.retryable).toBe(false); expect(result.text).not.toMatch(/publication date|couldn't validate/i); expect(result.text).not.toContain('extractive summary');
-    if (/Celsius/i.test(query)) expect(result.text).toContain('°C');
+    if (/Celsius/i.test(query)) expect(result.text).toContain('°F');
     if (/Waxahachie/i.test(query)) expect(result.text).toContain('Waxahachie');
     if (/Oklahoma City.*weather|weather.*Oklahoma City/i.test(query)) expect(result.text).toContain('Oklahoma City');
   },150000);

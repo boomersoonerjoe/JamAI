@@ -1,3 +1,36 @@
+# Real Mac location failure correction (2026-10-02)
+
+Owner real Mac location test FAILED; **do not mark device-location hardware acceptance PASS until owner manually retests**. Read docs/LOCATION-RUNTIME-FIX.md. Direct current-location questions previously bypassed resolver; fixed deterministic answers and saved fallback with no model required. Corrected Permissions API gating across successful callbacks and persisted explicit opt-in; denied access still falls back. Enable intent persists despite no coordinate reading; foreground acquisition 45s/20s, Refresh/off controls and stage diagnostics. Added bounded /api/location city conversion and lookup-failure saved fallback. Never infer city from timezone.
+
+Actual agent Mac geolocation requests timed out without real coordinates; no sensor success claimed. Real endpoint public Tulsa coordinates → Tulsa, OK HTTP 200; actual UI both direct location queries → saved Tulsa, weather → Tulsa and nearby → Tulsa sources. Full live suite 106/106 passed; final affected suite 33/33 passed; build passed. No push/merge; services running on localhost4173. Earlier statuses below are historical.
+
+# Location context/services checkpoint (2026-10-02)
+
+Owner manual Wi-Fi-off/local chat and Wi-Fi-on/live Tulsa search: PASSED. Added platform-neutral location resolution with optional foreground Browser Geolocation, explicit permission enable/off controls and persistent manual fallback. Latest user city in chat wins over automatic/default location; explicit query city wins over all context. Saved memory location works across chats. No physical-city inference from time zone. Device coordinates rounded to two decimal places; free Open-Meteo weather and Photon/OpenStreetMap nearby city lookup; nearby city/subject matches enforced. No Always/background location and no paid API.
+
+Read docs/LOCATION.md. Full live suite 102/102 passed; final affected location/server suite 28/28 passed; build passed. Exact Mac UI Tulsa declaration → implicit outside weather passed. Actual sensor/permission prompts on Mac and physical iPhone remain owner tests; permission behavior exercised through fixtures, no owner sensor coordinates requested/shared. No push or merge; stay on codex/cross-platform-foundation.
+
+# Final V1 validation checkpoint (2026-10-02)
+
+Stay on codex/cross-platform-foundation; no push or merge. Read docs/V1-FINAL-VALIDATION.md for the complete function matrix, failures fixed, evidence and remaining acceptance gates. Final complete web suite: 92/92 passed with live tests enabled and none skipped; production build passed. Native iPhone 18 Pro/iOS 27 simulator XCTest: 19/19 passed; not iPhone 14 Pro Max acceptance or portable feature parity.
+
+Validation fixed supplied-price arithmetic being routed online, enabled bounded Qwen reasoning only for recognized arithmetic after an incorrect $93 total (correct $99), and stopped cancelled stream fragments from being saved as completed replies. Real UI midstream Stop/reopen/Retry and completion persistence pass. Service restart, loopback-only Ollama, blocked retrieval/reconnection, memory and cached article follow-ups pass. Full browser-process/Mac reboot, physical Wi-Fi/sleep-wake and physical iPhone acceptance remain manual. Overall V1 acceptance estimate ~80%; not a percentage calculated from test counts. Actual Mac WebGPU Llama 3.2 1B load, knowledge, arithmetic and cross-chat saved-memory recall also passed; Qwen/Ollama restored afterward. Both local services remain running at http://127.0.0.1:4173. Earlier sections below are historical.
+
+# Latest fix: persistent new-chat greeting preference, 2026-10-02
+
+- Owner screenshot exposed two gaps: natural “from now on” commands were not saved, and model-generated save claims could contradict storage. Explicit “from now on” requests now save through the real memory write path. Save-confirmation follow-ups check the stored note rather than model promises.
+- Added a narrowly supported quoted greeting preference: new chats show the stored greeting immediately, and hello/hi/hey replies use it consistently. Edits/deletions are reflected; arbitrary saved instructions do not execute. Ordinary local/search routing remains.
+- Mac: 67 unit/HTTP/persistence checks passed; production build passed. Exact screenshot request saved without loading a model, “hello” in a new chat returned Hello Joe!, and a new chat after tab close/reopen showed Hello Joe! before model connection. Browser-profile/origin and full-browser/Mac reboot limitations remain. Earlier unsaved promises are not automatically mined from old chats; repeat the request once in the user's browser after refresh.
+- No push or merge.
+
+# Latest feature: persistent local memory, 2026-10-02
+
+- Explicit “remember this/that”, “please remember”, “keep this in mind”, and “save this to memory” commands persist notes before acknowledging, without model loading or internet access. Bare “remember this” uses the immediately preceding turn in the current chat; an empty chat asks for the fact. Ordinary recall questions do not write notes. Retries deduplicate identical notes.
+- The portable web/PWA Memory panel supports add, find, view, edit, and delete. Existing schema notes migrate losslessly to a separate versioned localStorage entry, avoiding collection rewrites during streamed chat updates. Newer notes/edits survive stale writes from another open tab.
+- A cached local inverted index ranks relevant notes using document-frequency/length scoring and common word variants. Each reply receives at most five matching notes within 2,000 UTF-8 bytes, rather than all notes or the old first-500-byte prefix. No embeddings, paid APIs, external memory service or extra model is used.
+- Mac: 64 unit/HTTP/persistence checks and 7 targeted real-Qwen checks passed; production build passed with the existing WebLLM bundle-size advisory. UI verified save without connecting a model, cross-chat recall, manual add/filter/edit/delete, and edited recall in a new search-Off chat after server restart and tab close/reopen. Separate-process persistence and a 10,001-note retrieval test passed. Full browser-process/Mac reboot and other-platform hardware tests were not performed.
+- See docs/PERSISTENT-MEMORY.md for use, storage boundaries and test details. No push or merge; development branch only.
+
 # Latest fix: retained retrieval/article context and subject references, 2026-10-02
 
 - Confirmed source evidence was discarded unless sources were requested; follow-up prompts also omitted stored evidence and had a tiny history budget. Evidence now persists on every retrieved reply regardless of visibility, and recognized source/story/article follow-ups reuse it without a fresh search. Explicit article references can reach earlier retrieval across unrelated turns; generic references stay with the previous reply.
@@ -299,3 +332,11 @@ If the session ends before these steps can be completed, the Abrupt-Stop / Usage
 - Added hand-off, small-commit, no-main-feature-development, and no-unverified-test rules.
 - Code behavior changed: No.
 - Builds/tests run: None; documentation-only change.
+
+## October 3, 2026 — weather units and latency complete
+
+- U.S. weather uses Fahrenheit from verified country metadata; coordinates use bounded reverse geocoding. Other regions follow CLDR weather preferences. Fresh weather remains uncached; verified place metadata is cached for ten minutes.
+- Profiled the complete chat pipeline. Dominant delays were unnecessary planning and alternating 8K/4K runner reloads. Unified context, preloading and direct structured weather answers remove those delays.
+- Found saved prompt states growing to 4.45 GiB during sustained testing; capped them at 256 MiB and enabled Flash Attention/q8_0 context cache, retaining 8K context and the same Huihui model. Final sustained test run had normal memory pressure.
+- 206 relevant deterministic/live tests passed, with four optional profile/input harness skips; separate latency/memory profiles and TypeScript/build/offline-shell checks passed. See docs/WEATHER-LATENCY.md and raw timing JSON.
+- The latest user instruction explicitly authorizes committing all pending NhomeAI source work and pushing the current branch, superseding earlier no-push checkpoints. Downloads, dependency folders, logs and user browser data are excluded. No paid service used.
