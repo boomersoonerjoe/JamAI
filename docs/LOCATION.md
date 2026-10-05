@@ -2,14 +2,14 @@
 
 # Location context and services (2026-10-02)
 
-The portable web/PWA is the primary NhomeAI client. Location logic lives in `web/src/location.ts`, behind a platform-neutral `LocationProvider` interface. The `BrowserLocationProvider` adapter uses standard browser Geolocation; neither the core nor AI providers import Apple services. The preserved native Swift reference is unchanged; a future native adapter must implement foreground/While Using authorization, not request Always or background tracking.
+The portable web/PWA is the primary JamAI client. Location logic lives in `web/src/location.ts`, behind a platform-neutral `LocationProvider` interface. The `BrowserLocationProvider` adapter uses standard browser Geolocation; neither the core nor AI providers import Apple services. The preserved native Swift reference is unchanged; a future native adapter must implement foreground/While Using authorization, not request Always or background tracking.
 
 ## Using location
 
-- Tell NhomeAI **“I’m in Tulsa, OK”** or **“I live in Tulsa, OK”** in a chat. Later “What’s the weather outside?” or nearby requests use the most recent stated city in that conversation, including after reopening it. Assistant guesses, retrieved text and device time zones are not location inputs.
+- Tell JamAI **“I’m in Tulsa, OK”** or **“I live in Tulsa, OK”** in a chat. Later “What’s the weather outside?” or nearby requests use the most recent stated city in that conversation, including after reopening it. Assistant guesses, retrieved text and device time zones are not location inputs.
 - To reuse across completely separate chats, say **“Remember this: I live in Tulsa, OK”**, or open **Location settings**, enter a **Saved location** and press **Save location**. Clear the field and save to clear the fallback; Memory edits/deletions control saved memory locations.
 - An explicit requested city wins. Otherwise precedence is latest user location statement in the active chat → permitted device location if enabled → saved fallback setting → most recent saved location note. A new travel location in a chat therefore overrides device/saved defaults. Ambiguous manual city names may require state/country. Parsing supports explicit first-person location statements, not arbitrary inferred locations.
-- With no usable location, NhomeAI asks for city/state or country; **America/Chicago never supplies Chicago as a physical city**.
+- With no usable location, JamAI asks for city/state or country; **America/Chicago never supplies Chicago as a physical city**.
 
 ## Permission and privacy
 

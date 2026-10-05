@@ -343,7 +343,7 @@ export async function retrieveWeb(request, signal, requestFetch = fetch, now = n
     ];
     // Aggregate independent engines rather than accepting the first weak hit.
     const outcomes = await Promise.allSettled(endpoints.map(async ([engine, provider, url]) => {
-      const response = await requestFetch(new URL(url), {signal:AbortSignal.any([combined,AbortSignal.timeout(6500)]),redirect:'error',headers:{Accept:'text/html,application/rss+xml','User-Agent':'NhomeAI/0.1 local-first personal search'}});
+      const response = await requestFetch(new URL(url), {signal:AbortSignal.any([combined,AbortSignal.timeout(6500)]),redirect:'error',headers:{Accept:'text/html,application/rss+xml','User-Agent':'JamAI/0.1 local-first personal search'}});
       const text = await boundedText(response);
       const sources = (engine === 'rss' ? parseResults(text,request,now) : parseWebHTML(text,engine))
         .filter(source=>matchesWeatherLocation(source,location))
@@ -446,7 +446,7 @@ export async function retrieveSearch(input, signal, requestFetch = fetch, now = 
   const fetchSources = async target => {
   const response = await requestFetch(target, {
     signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]), redirect: 'error',
-    headers: { Accept: 'application/rss+xml, application/xml, text/xml', 'User-Agent': 'NhomeAI/0.1 local-first personal search' },
+    headers: { Accept: 'application/rss+xml, application/xml, text/xml', 'User-Agent': 'JamAI/0.1 local-first personal search' },
   });
   return parseResults(await boundedText(response), request, now);
   };

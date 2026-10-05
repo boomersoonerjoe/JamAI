@@ -1,10 +1,10 @@
 # Persistent local memory
 
-The portable NhomeAI web/PWA app uses its existing saved-memory schema with a separate durable local browser store and selective retrieval. The iPhone Swift reference app is unchanged. Both portable local runtimes (Ollama and WebLLM) use the same memory/context layer.
+The portable JamAI web/PWA app uses its existing saved-memory schema with a separate durable local browser store and selective retrieval. The iPhone Swift reference app is unchanged. Both portable local runtimes (Ollama and WebLLM) use the same memory/context layer.
 
 ## Use
 
-- Say `Remember this: my dog's name is Maple.` or `Please remember that my favorite color is teal.` NhomeAI saves the note before acknowledging. No internet or loaded model is needed to save it.
+- Say `Remember this: my dog's name is Maple.` or `Please remember that my favorite color is teal.` JamAI saves the note before acknowledging. No internet or loaded model is needed to save it.
 - `Can you please remember that ...`, `Keep this in mind: ...`, and `Save this to memory: ...` also save. Questions such as `Do you remember my name?` remain ordinary local AI questions.
 - A bare `Remember this` saves the immediately preceding message in the current chat. With no preceding message, the app asks what to save. For clarity, include the fact directly after the command.
 - Start a completely new chat and ask a question about the saved fact. Relevant notes are supplied to the local AI even when no earlier conversation messages are present.

@@ -1,4 +1,4 @@
-# NhomeAI V1 local-first chat
+# JamAI V1 local-first chat
 
 ## Saved sources and article follow-ups (2026-10-02)
 

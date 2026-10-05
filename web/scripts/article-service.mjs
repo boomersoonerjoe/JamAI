@@ -132,7 +132,7 @@ export function readArticleHTML(response, encoding='identity') {
 // Resolve and pin a public address at connection time; redirects receive the same checks.
 function getPage(url, signal) {
   return new Promise((resolve,reject) => {
-    const req = (url.protocol === 'https:' ? https : http)(url,{signal,method:'GET',headers:{'User-Agent':'NhomeAI/1.0','Accept':'text/html','Cache-Control':'no-cache'},lookup(host,options,callback) {
+    const req = (url.protocol === 'https:' ? https : http)(url,{signal,method:'GET',headers:{'User-Agent':'JamAI/1.0','Accept':'text/html','Cache-Control':'no-cache'},lookup(host,options,callback) {
       lookup(host,{all:true},(error,addresses) => {
         if (error) return callback(error);
         if (!addresses.length || addresses.some(a => !publicAddress(a.address))) return callback(new Error('Private article address'));

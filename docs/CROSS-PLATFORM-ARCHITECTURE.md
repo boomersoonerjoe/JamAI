@@ -2,17 +2,17 @@
 
 > V1 is now local-first. See [local-first chat](LOCAL-FIRST-CHAT.md) for device clock, free optional retrieval, extractive local summaries, privacy and current Mac validation. Launch with `scripts/start-mac-chat.sh` for search; static Vite preview alone has no retrieval API.
 
-# NhomeAI cross-platform architecture
+# JamAI cross-platform architecture
 
 ## Product requirement
-NhomeAI is a private, single-owner AI system. Its core product must work on iPhone/iPad, Android, macOS, Windows, and Linux without requiring an Apple Developer Program subscription or recurring iOS re-signing.
+JamAI is a private, single-owner AI system. Its core product must work on iPhone/iPad, Android, macOS, Windows, and Linux without requiring an Apple Developer Program subscription or recurring iOS re-signing.
 
 ## Architecture
 1. **Portable client:** `web/` is the primary cross-platform UI/PWA.
 2. **Portable state:** conversations, memories, and image-draft concepts retain schema-v1 semantics from the tested Swift implementation.
 3. **Provider boundary:** the client talks to a `ChatProvider`; UI/storage must not depend on Apple Foundation Models, MLX, or any cloud vendor.
 4. **Local/private runtimes:** the browser provider runs Llama 3.2 1B Instruct 4-bit in a dedicated browser Web Worker through WebLLM/WebGPU, on the client device. Initial asset downloads are explicit and browser-cached. No Mac or cloud inference is required. A selectable desktop adapter runs Qwen3.5 4B Q4_K_M through loopback-only Ollama; see `docs/MAC-LOCAL-AI.md`. Desktop browsers initially select Ollama; mobile browsers select WebLLM. Future optional adapters may target a trusted LAN node or explicitly configured private backend. See `docs/LOCAL-AI-CHAT.md` for requirements and device acceptance.
-5. **Apple adapter:** the existing Swift/Apple implementation remains preserved as tested reference code and may later serve as an optional Apple-native adapter. It is not the required NhomeAI client.
+5. **Apple adapter:** the existing Swift/Apple implementation remains preserved as tested reference code and may later serve as an optional Apple-native adapter. It is not the required JamAI client.
 6. **Installability:** the web client is designed as a PWA so supported browsers can install it to the home screen/desktop without App Store distribution.
 
 ## Migration sequence

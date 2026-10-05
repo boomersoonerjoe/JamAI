@@ -135,13 +135,13 @@ function App() {
     setDraft(''); void answer(c);
   }
   return <main>
-    <header><h1>NhomeAI</h1><small>Private cross-platform AI · local-first</small><DeviceClock /></header>
+    <header><h1>JamAI</h1><small>Private cross-platform AI · local-first</small><DeviceClock /></header>
     <section className="model">
       <label>Chat runtime <select aria-label="Chat runtime" value={providerID} disabled={busy || status.phase === 'loading'} onChange={e => {
         setProviderID(e.target.value); setStatus({ phase: 'idle', message: 'Connect or load the selected runtime to start chat.' }); setError('');
       }}><option value="ollama">Local Ollama (Mac / PC)</option><option value="webllm">On-device browser (WebGPU)</option></select></label>
       <p><strong>{provider.name}</strong></p>
-      {providerID === 'ollama' ? <p>Install Ollama and Huihui Qwen3 8B Abliterated v2 once. NhomeAI connects automatically when opened. AI replies and summaries run on this computer and work offline. Ollama must be running at 127.0.0.1:11434. No cloud fallback.</p> : <p>First load downloads model assets from Hugging Face and the WebLLM runtime CDN, then caches them in this browser. Chats run on this device. Allow roughly 1 GB or more of free storage and memory; keep the app open while loading.</p>}
+      {providerID === 'ollama' ? <p>Install Ollama and Huihui Qwen3 8B Abliterated v2 once. JamAI connects automatically when opened. AI replies and summaries run on this computer and work offline. Ollama must be running at 127.0.0.1:11434. No cloud fallback.</p> : <p>First load downloads model assets from Hugging Face and the WebLLM runtime CDN, then caches them in this browser. Chats run on this device. Allow roughly 1 GB or more of free storage and memory; keep the app open while loading.</p>}
       <div role="status" aria-live="polite">{status.message}</div>
       {status.phase === 'loading' && <progress aria-label="Model loading" max={1} value={status.progress ?? 0} />}
       {status.phase !== 'ready' && <button disabled={status.phase === 'loading'} onClick={load}>{status.phase === 'error' ? 'Retry model load' : providerID === 'ollama' ? 'Connect local Ollama' : 'Load local model'}</button>}
@@ -174,7 +174,7 @@ function App() {
       {data.conversations.map(c => <button disabled={busy} className="chat" aria-pressed={active === c.id} onClick={() => { setActive(c.id); setRetry(undefined); setError(''); }} key={c.id}>{c.title}</button>)}
     </aside><article>
       {current ? <>
-        <div className="messages" aria-label="Conversation">{current.messages.map((m, index) => <div key={m.id} className={m.role}><small>{m.role === 'user' ? 'You' : 'NhomeAI'}</small><div>{m.text}</div>{m.evidence && wantsSources(current.messages[index - 1]?.text ?? '') && <div className="sources">
+        <div className="messages" aria-label="Conversation">{current.messages.map((m, index) => <div key={m.id} className={m.role}><small>{m.role === 'user' ? 'You' : 'JamAI'}</small><div>{m.text}</div>{m.evidence && wantsSources(current.messages[index - 1]?.text ?? '') && <div className="sources">
           <small>{m.evidence.provider}</small>
           <ol>{m.evidence.sources.filter(source => safeSourceURL(source.url)).map((source, index) => <li key={source.url}>
             <a href={source.url} target="_blank" rel="noopener noreferrer">[{index + 1}] {source.title}</a>
@@ -185,10 +185,10 @@ function App() {
         {error && <div className="error" role="alert">{error}</div>}
         {!busy && pending && <button disabled={status.phase !== 'ready'} onClick={() => answer(pending)}>Retry response</button>}
         <form onSubmit={e => { e.preventDefault(); send(); }}>
-          <input aria-label="Message NhomeAI" disabled={busy} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Message NhomeAI" />
+          <input aria-label="Message JamAI" disabled={busy} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Message JamAI" />
           {busy ? <button type="button" onClick={() => controller.current?.abort()}>Stop</button> : <button disabled={(status.phase !== 'ready' && !isDeviceClockQuestion(draft) && !isLocationQuestion(draft) && memoryCommand(draft) === undefined) || !draft.trim()}>Send</button>}
         </form>
-      </> : <div className="empty">NhomeAI V1<br /><span>Choose or start a conversation.</span>{error && <p role="alert">{error}</p>}</div>}
+      </> : <div className="empty">JamAI V1<br /><span>Choose or start a conversation.</span>{error && <p role="alert">{error}</p>}</div>}
     </article></section>
   </main>;
 }

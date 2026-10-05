@@ -4,9 +4,9 @@ Validated locally October 2, 2026 (America/Chicago). No commit, push or merge.
 
 ## Decision and cost
 
-Keep NhomeAI's React/PWA interface, browser-local model, Ollama provider, memory and existing Node server. Reuse [Mozilla Readability](https://github.com/mozilla/readability) 0.6.0 (Apache-2.0) with [jsdom](https://github.com/jsdom/jsdom) 30.1.1 (MIT) for readable evidence. Both allow personal use and modification without payment. Pin the two new dependencies in the existing pnpm lockfile.
+Keep JamAI's React/PWA interface, browser-local model, Ollama provider, memory and existing Node server. Reuse [Mozilla Readability](https://github.com/mozilla/readability) 0.6.0 (Apache-2.0) with [jsdom](https://github.com/jsdom/jsdom) 30.1.1 (MIT) for readable evidence. Both allow personal use and modification without payment. Pin the two new dependencies in the existing pnpm lockfile.
 
-This uses the useful component approach from the research: focused queries, multiple search sources, readable page content and local synthesis, without installing an entire assistant or another orchestration/RAG platform. Adding a separate SearXNG service or adopting a whole search application would add deployment and maintenance requirements without resolving NhomeAI's routing and local-model execution bugs. The existing public engines already returned relevant official pages when queried correctly.
+This uses the useful component approach from the research: focused queries, multiple search sources, readable page content and local synthesis, without installing an entire assistant or another orchestration/RAG platform. Adding a separate SearXNG service or adopting a whole search application would add deployment and maintenance requirements without resolving JamAI's routing and local-model execution bugs. The existing public engines already returned relevant official pages when queried correctly.
 
 There are no paid search keys, hosted inference, subscriptions or new hosting requirements. Existing public web search/news endpoints remain free access dependencies. [Open-Meteo](https://open-meteo.com/en/pricing) remains on its free personal/noncommercial API; its optional commercial service is not configured. The ordinary costs of running the user's existing computer/internet remain unchanged.
 

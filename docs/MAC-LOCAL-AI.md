@@ -4,7 +4,7 @@
 
 ## Architecture and selection
 
-The primary NhomeAI client is the React/TypeScript PWA in `web/`. `ChatProvider` owns availability, preparation and streamed generation; schema-v1 storage and bounded prompt construction remain independent of inference. The existing Swift/Apple/MLX implementation is preserved reference code, not the required desktop client.
+The primary JamAI client is the React/TypeScript PWA in `web/`. `ChatProvider` owns availability, preparation and streamed generation; schema-v1 storage and bounded prompt construction remain independent of inference. The existing Swift/Apple/MLX implementation is preserved reference code, not the required desktop client.
 
 The active Mac model is **Huihui Qwen3-8B Abliterated v2 Q4_K_M**, exact tag `huihui_ai/qwen3-abliterated:8b-v2-q4_K_M`, using the existing official Ollama **0.35.0** runtime over `http://127.0.0.1:11434`. The publisher's own Ollama release is linked from its source model card and uses Apache 2.0. Downloaded model files total about 5.03 GB. Four-bit weights leave more headroom on the M5 Air's 16 GB unified memory than 8-bit or full precision.
 

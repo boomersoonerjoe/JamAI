@@ -13,7 +13,7 @@ function readMemories(raw: string): MemoryNote[] {
 export function loadData():AppData {
   const raw=localStorage.getItem(STORAGE_KEY);
   const parsed=raw ? JSON.parse(raw) as AppData : emptyData();
-  if(parsed.schemaVersion!==1) throw new Error("This data was saved by a newer NhomeAI version.");
+  if(parsed.schemaVersion!==1) throw new Error("This data was saved by a newer JamAI version.");
   const memory = localStorage.getItem(MEMORY_STORAGE_KEY);
   return { ...parsed, memories: memory === null ? parsed.memories : readMemories(memory) };
 }

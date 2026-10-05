@@ -1,6 +1,6 @@
 # Mac login startup — installed October 2, 2026
 
-This Mac now starts the existing NhomeAI local services at user login using two user LaunchAgents:
+This Mac now starts the existing JamAI local services at user login using two user LaunchAgents:
 
 - `~/Library/LaunchAgents/com.nhomeai.ollama.plist`
 - `~/Library/LaunchAgents/com.nhomeai.web.plist`
@@ -18,8 +18,8 @@ Validation: both plists passed lint; launchd loaded both jobs and started servic
 ## Owner reboot test
 
 1. Restart the Mac and log in to this same macOS account. Do not manually start scripts or open Codex to start services.
-2. Wait about 20 seconds, then reopen NhomeAI in the same browser/profile at the same address used for saved chats (normally http://127.0.0.1:4173).
-3. Confirm saved conversations and memory remain. NhomeAI now checks local Ollama automatically on opening and retries twice at two-second intervals if login startup is still in progress. The status should become Ready without clicking Connect local Ollama. If the service or model remains unavailable, the app shows the error and keeps manual retry available.
+2. Wait about 20 seconds, then reopen JamAI in the same browser/profile at the same address used for saved chats (normally http://127.0.0.1:4173).
+3. Confirm saved conversations and memory remain. JamAI now checks local Ollama automatically on opening and retries twice at two-second intervals if login startup is still in progress. The status should become Ready without clicking Connect local Ollama. If the service or model remains unavailable, the app shows the error and keeps manual retry available.
 4. Send a message and confirm a local reply, then check recall of the facts from the original persistence test.
 5. Report any error text if startup fails. Do not clear browser/site data or switch browser profiles during this test.
 

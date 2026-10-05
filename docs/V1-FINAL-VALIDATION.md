@@ -2,7 +2,7 @@
 
 > Update 2026-10-02: owner reports physical Wi-Fi offline/reconnection test PASSED with Tulsa, OK specified. Location context/services added and validated separately; see [LOCATION.md](LOCATION.md). Other unperformed hardware/reboot gates below remain.
 
-# NhomeAI V1 final validation — 2026-10-02
+# JamAI V1 final validation — 2026-10-02
 
 Branch: `codex/cross-platform-foundation`. No push or merge. This records the tested state, not universal model accuracy or physical iPhone acceptance.
 

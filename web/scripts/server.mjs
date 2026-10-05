@@ -15,7 +15,7 @@ export function makeServer(search = retrieveSearch, article = retrieveArticle, l
     const host = request.headers.host || '';
     const origin = request.headers.origin;
     // Loopback-only retrieval; article requests also reject private network targets.
-    if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host) || (origin && !/^http:\/\/(127\.0\.0\.1|localhost):(4173|5173)$/.test(origin))) return json(response, 403, { error: 'Only the local NhomeAI origin is permitted.' });
+    if (!/^(127\.0\.0\.1|localhost):\d+$/.test(host) || (origin && !/^http:\/\/(127\.0\.0\.1|localhost):(4173|5173)$/.test(origin))) return json(response, 403, { error: 'Only the local JamAI origin is permitted.' });
     let path;
     try { path = new URL(request.url, `http://${host}`).pathname; } catch { return json(response, 400, { error: 'Invalid URL.' }); }
     if (path === '/api/search' || path === '/api/article' || path === '/api/location') {
@@ -54,5 +54,5 @@ export function makeServer(search = retrieveSearch, article = retrieveArticle, l
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const server = makeServer();
   server.on('error', error => { console.error(error.message); process.exitCode = 1; });
-  server.listen(4173, '127.0.0.1', () => console.log('NhomeAI local-first: http://127.0.0.1:4173 (AI stays local; search uses free public web results and news RSS)'));
+  server.listen(4173, '127.0.0.1', () => console.log('JamAI local-first: http://127.0.0.1:4173 (AI stays local; search uses free public web results and news RSS)'));
 }
