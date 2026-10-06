@@ -5,3 +5,12 @@
 DerivedData/
 *.xcuserstate
 xcuserdata/
+
+# Web dependencies and production output
+.pnpm-store/
+/node_modules/
+web/node_modules/
+web/dist/
+
+# Local inference runtime, downloaded weights, and logs
+.local-ai/

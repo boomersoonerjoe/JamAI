@@ -1,0 +1,429 @@
+{
+  "machine": "Apple M5 MacBook Air, 16 GB RAM",
+  "date": "2026-10-03",
+  "model": "huihui_ai/qwen3-abliterated:8b-v2-q4_K_M",
+  "finalRuntime": {
+    "contextTokens": 8192,
+    "kvCache": "q8_0",
+    "savedPromptCacheMiB": 256,
+    "keepAlive": "10m"
+  },
+  "measurements": [
+    {
+      "phase": "before",
+      "question": "What is the capital of Oklahoma?",
+      "state": "cold",
+      "prepareMs": 6.125917000000015,
+      "contextMs": 0.5288749999999993,
+      "firstVisibleMs": 16576.480708000003,
+      "totalMs": 16905.138583,
+      "stages": [
+        {
+          "stage": "Local AI is planning whether live information is needed\u2026",
+          "atMs": 28.259041999999994
+        },
+        {
+          "stage": "Local AI is replying\u2026",
+          "atMs": 9920.025333
+        }
+      ],
+      "calls": [
+        {
+          "endpoint": "http://127.0.0.1:11434/api/tags",
+          "startMs": 0.12404200000000287,
+          "promptBytes": 0,
+          "headersMs": 5.558665999999988,
+          "totalMs": 5.559750000000008
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 28.598917,
+          "context": 8192,
+          "promptBytes": 4637,
+          "headersMs": 8311.051708,
+          "firstModelTokenMs": 8341.307208,
+          "totalMs": 9885.169708,
+          "loadMs": 6504.952917,
+          "promptEvalMs": 1778.277,
+          "promptTokens": 860,
+          "decodeMs": 1574.064,
+          "outputTokens": 37
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/chat",
+          "startMs": 9920.837167,
+          "context": 4096,
+          "promptBytes": 2432,
+          "headersMs": 6655.147291000001,
+          "firstModelTokenMs": 16576.512542,
+          "totalMs": 6982.761458000001,
+          "loadMs": 5584.881958,
+          "promptEvalMs": 1042.367,
+          "promptTokens": 499,
+          "decodeMs": 325.162,
+          "outputTokens": 9
+        }
+      ],
+      "answer": "The capital of Oklahoma is Oklahoma City."
+    },
+    {
+      "phase": "before",
+      "question": "What is the capital of Oklahoma?",
+      "state": "warm",
+      "prepareMs": 11.443333000002895,
+      "contextMs": 0.9552919999987353,
+      "firstVisibleMs": 13953.352333000003,
+      "totalMs": 14287.499125000002,
+      "stages": [
+        {
+          "stage": "Local AI is planning whether live information is needed\u2026",
+          "atMs": 17.785125000002154
+        },
+        {
+          "stage": "Local AI is replying\u2026",
+          "atMs": 8646.018750000003
+        }
+      ],
+      "calls": [
+        {
+          "endpoint": "http://127.0.0.1:11434/api/tags",
+          "startMs": 0.0942910000012489,
+          "promptBytes": 0,
+          "headersMs": 11.020625000001019,
+          "totalMs": 11.022334000001138
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 17.929125000002387,
+          "context": 8192,
+          "promptBytes": 4637,
+          "headersMs": 7095.633041000001,
+          "firstModelTokenMs": 7114.1535,
+          "totalMs": 8626.657457999998,
+          "loadMs": 5287.585209,
+          "promptEvalMs": 1773.206,
+          "promptTokens": 860,
+          "decodeMs": 1530.917,
+          "outputTokens": 37
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/chat",
+          "startMs": 8646.451416,
+          "context": 4096,
+          "promptBytes": 2432,
+          "headersMs": 5306.428084000003,
+          "firstModelTokenMs": 13953.382083,
+          "totalMs": 5640.083625000003,
+          "loadMs": 4255.239375,
+          "promptEvalMs": 1033.371,
+          "promptTokens": 499,
+          "decodeMs": 333.855,
+          "outputTokens": 9
+        }
+      ],
+      "answer": "The capital of Oklahoma is Oklahoma City."
+    },
+    {
+      "phase": "before",
+      "question": "What is the weather in Tulsa, OK right now?",
+      "state": "cold",
+      "prepareMs": 5.863790999999765,
+      "contextMs": 0.09754199999952107,
+      "firstVisibleMs": 11411.596333000001,
+      "totalMs": 11411.614583000002,
+      "stages": [
+        {
+          "stage": "Local AI is planning whether live information is needed\u2026",
+          "atMs": 10.40520800000013
+        },
+        {
+          "stage": "Searching free internet sources\u2026",
+          "atMs": 7197.490375000001
+        },
+        {
+          "stage": "Local AI is summarizing retrieved sources\u2026",
+          "atMs": 8993.98975
+        }
+      ],
+      "calls": [
+        {
+          "endpoint": "http://127.0.0.1:11434/api/tags",
+          "startMs": 0.039625000001251465,
+          "promptBytes": 0,
+          "headersMs": 5.651458000000275,
+          "totalMs": 5.652458000000479
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 10.498083000002225,
+          "context": 8192,
+          "promptBytes": 4648,
+          "headersMs": 4450.9883329999975,
+          "firstModelTokenMs": 4461.939707999998,
+          "totalMs": 7184.505916999999,
+          "loadMs": 2670.014166,
+          "promptEvalMs": 1768.514,
+          "promptTokens": 864,
+          "decodeMs": 2734.121,
+          "outputTokens": 65
+        },
+        {
+          "endpoint": "search/weather",
+          "startMs": 7197.677708000003,
+          "totalMs": 1796.291333000001
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 8994.174916000004,
+          "context": 8192,
+          "promptBytes": 2292,
+          "headersMs": 1381.7962499999994,
+          "firstModelTokenMs": 10376.322165999998,
+          "totalMs": 2414.635583999996,
+          "loadMs": 25.0925,
+          "promptEvalMs": 1255.901,
+          "promptTokens": 557,
+          "decodeMs": 1035.446999,
+          "outputTokens": 27
+        }
+      ],
+      "answer": "The current temperature in Tulsa, OK is 68.4\u00b0F, and it feels like 73.5\u00b0F."
+    },
+    {
+      "phase": "before",
+      "question": "What is the weather in Tulsa, OK right now?",
+      "state": "warm",
+      "prepareMs": 16.088792000002286,
+      "contextMs": 0.15074999999342253,
+      "firstVisibleMs": 6248.447375000003,
+      "totalMs": 6248.466208999998,
+      "stages": [
+        {
+          "stage": "Local AI is planning whether live information is needed\u2026",
+          "atMs": 19.183375000000524
+        },
+        {
+          "stage": "Searching free internet sources\u2026",
+          "atMs": 2762.3154170000053
+        },
+        {
+          "stage": "Local AI is summarizing retrieved sources\u2026",
+          "atMs": 4447.801584000001
+        }
+      ],
+      "calls": [
+        {
+          "endpoint": "http://127.0.0.1:11434/api/tags",
+          "startMs": 0.08504199999879347,
+          "promptBytes": 0,
+          "headersMs": 15.68133300000045,
+          "totalMs": 15.690083000001323
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 19.272625000005064,
+          "context": 8192,
+          "promptBytes": 4648,
+          "headersMs": 107.58187499999622,
+          "firstModelTokenMs": 127.10279200000514,
+          "totalMs": 2741.949999999997,
+          "loadMs": 4.804834,
+          "promptEvalMs": 45.87,
+          "promptTokens": 864,
+          "decodeMs": 2634.193,
+          "outputTokens": 65
+        },
+        {
+          "endpoint": "search/weather",
+          "startMs": 2762.3309999999983,
+          "totalMs": 1685.4435000000012
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 4447.878499999999,
+          "context": 8192,
+          "promptBytes": 2292,
+          "headersMs": 755.4462500000009,
+          "firstModelTokenMs": 5203.580999999998,
+          "totalMs": 1799.6932090000046,
+          "loadMs": 4.829542,
+          "promptEvalMs": 717.717,
+          "promptTokens": 557,
+          "decodeMs": 1044.045,
+          "outputTokens": 27
+        }
+      ],
+      "answer": "The current temperature in Tulsa, OK is 68.4\u00b0F, and it feels like 73.5\u00b0F."
+    },
+    {
+      "phase": "after",
+      "question": "What is the capital of Oklahoma?",
+      "state": "cold",
+      "prepareMs": 2667.123125,
+      "contextMs": 1.3520830000002206,
+      "firstVisibleMs": 3759.102375,
+      "totalMs": 4096.597917,
+      "stages": [
+        {
+          "stage": "Local AI is replying\u2026",
+          "atMs": 2695.171458
+        }
+      ],
+      "calls": [
+        {
+          "endpoint": "http://127.0.0.1:11434/api/tags",
+          "startMs": 0.10933300000000656,
+          "promptBytes": 0,
+          "headersMs": 4.158666999999994,
+          "totalMs": 4.159624999999991
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 4.65245800000001,
+          "context": 8192,
+          "promptBytes": 2,
+          "headersMs": 2662.021917,
+          "totalMs": 2662.024375
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/chat",
+          "startMs": 2695.667208,
+          "context": 8192,
+          "promptBytes": 2432,
+          "headersMs": 1062.444375,
+          "firstModelTokenMs": 3759.230125,
+          "totalMs": 1394.3297500000003,
+          "loadMs": 2.8505,
+          "promptEvalMs": 1045.084,
+          "promptTokens": 499,
+          "decodeMs": 331.685,
+          "outputTokens": 9
+        }
+      ],
+      "answer": "The capital of Oklahoma is Oklahoma City."
+    },
+    {
+      "phase": "after",
+      "question": "What is the capital of Oklahoma?",
+      "state": "warm",
+      "prepareMs": 9.657083999999486,
+      "contextMs": 0.099250000000211,
+      "firstVisibleMs": 469.1027919999997,
+      "totalMs": 801.6542920000002,
+      "stages": [
+        {
+          "stage": "Local AI is replying\u2026",
+          "atMs": 13.23174999999992
+        }
+      ],
+      "calls": [
+        {
+          "endpoint": "http://127.0.0.1:11434/api/tags",
+          "startMs": 0.053791999999702966,
+          "promptBytes": 0,
+          "headersMs": 4.387666999999965,
+          "totalMs": 4.388458000000355
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 4.6177499999994325,
+          "context": 8192,
+          "promptBytes": 2,
+          "headersMs": 4.883749999999964,
+          "totalMs": 4.885167000000365
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/chat",
+          "startMs": 13.280166999999892,
+          "context": 8192,
+          "promptBytes": 2432,
+          "headersMs": 455.33937499999956,
+          "firstModelTokenMs": 469.16995899999984,
+          "totalMs": 787.122042,
+          "loadMs": 2.550667,
+          "promptEvalMs": 444.521,
+          "promptTokens": 499,
+          "decodeMs": 331.563,
+          "outputTokens": 9
+        }
+      ],
+      "answer": "The capital of Oklahoma is Oklahoma City."
+    },
+    {
+      "phase": "after",
+      "question": "What is the weather in Tulsa, OK right now?",
+      "state": "cold",
+      "prepareMs": 2683.8350420000006,
+      "contextMs": 0.21266599999944447,
+      "firstVisibleMs": 4434.854083000001,
+      "totalMs": 4434.864458000001,
+      "stages": [
+        {
+          "stage": "Searching free internet sources\u2026",
+          "atMs": 2687.7495420000005
+        }
+      ],
+      "calls": [
+        {
+          "endpoint": "http://127.0.0.1:11434/api/tags",
+          "startMs": 0.039583000000675383,
+          "promptBytes": 0,
+          "headersMs": 5.578166999999667,
+          "totalMs": 5.579416999999921
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 5.846833000000515,
+          "context": 8192,
+          "promptBytes": 2,
+          "headersMs": 2677.5935419999996,
+          "totalMs": 2677.5977919999996
+        },
+        {
+          "endpoint": "search/weather",
+          "startMs": 2687.85275,
+          "totalMs": 1745.409458000001
+        }
+      ],
+      "answer": "It is currently 68.3\u00b0F in Tulsa, Oklahoma, United States, and feels like 73.5\u00b0F."
+    },
+    {
+      "phase": "after",
+      "question": "What is the weather in Tulsa, OK right now?",
+      "state": "warm",
+      "prepareMs": 13.948583999999755,
+      "contextMs": 0.11145899999974063,
+      "firstVisibleMs": 162.9282920000005,
+      "totalMs": 162.93679200000042,
+      "stages": [
+        {
+          "stage": "Searching free internet sources\u2026",
+          "atMs": 16.641208999999435
+        }
+      ],
+      "calls": [
+        {
+          "endpoint": "http://127.0.0.1:11434/api/tags",
+          "startMs": 0.05212500000016007,
+          "promptBytes": 0,
+          "headersMs": 6.508208999999624,
+          "totalMs": 6.512499999998909
+        },
+        {
+          "endpoint": "http://127.0.0.1:11434/api/generate",
+          "startMs": 7.1009589999994205,
+          "context": 8192,
+          "promptBytes": 2,
+          "headersMs": 6.637625000001208,
+          "totalMs": 6.643041000001176
+        },
+        {
+          "endpoint": "search/weather",
+          "startMs": 16.64574999999968,
+          "totalMs": 145.88287499999933
+        }
+      ],
+      "answer": "It is currently 68.3\u00b0F in Tulsa, Oklahoma, United States, and feels like 73.5\u00b0F."
+    }
+  ]
+}
